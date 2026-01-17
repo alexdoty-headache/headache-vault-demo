@@ -10,52 +10,104 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for medical professional interface
+# Custom CSS with Headache Vault brand identity
 st.markdown("""
 <style>
+    /* Import brand fonts */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Source+Sans+Pro:wght@400;600&display=swap');
+    
+    /* Global font override */
+    html, body, [class*="css"] {
+        font-family: 'Source Sans Pro', sans-serif;
+    }
+    
+    h1, h2, h3, h4, h5, h6 {
+        font-family: 'Inter', sans-serif;
+        font-weight: 700;
+    }
+    
     .main-header {
         font-size: 2.5rem;
-        color: #1f4788;
+        color: #4B0082;  /* Regulatory Purple */
         font-weight: 700;
         margin-bottom: 0.5rem;
+        font-family: 'Inter', sans-serif;
     }
     .sub-header {
         font-size: 1.2rem;
-        color: #666;
+        color: #708090;  /* Clinical Slate */
         margin-bottom: 2rem;
+        font-family: 'Source Sans Pro', sans-serif;
     }
     .step-box {
         background-color: #f0f2f6;
         padding: 1rem;
         border-radius: 8px;
-        border-left: 4px solid #1f4788;
+        border-left: 4px solid #4B0082;  /* Regulatory Purple */
         margin: 1rem 0;
         color: #262730;
     }
     .warning-box {
-        background-color: #fff3cd;
+        background-color: #FFF9E6;  /* Lighter yellow for warnings */
         padding: 1rem;
         border-radius: 8px;
-        border-left: 4px solid #ffc107;
+        border-left: 4px solid #FFD700;  /* Gold Card Yellow */
         margin: 1rem 0;
         color: #856404;
     }
     .success-box {
-        background-color: #d4edda;
+        background-color: #F5F0FF;  /* Lavender tint */
         padding: 1rem;
         border-radius: 8px;
-        border-left: 4px solid #28a745;
+        border-left: 4px solid #FFD700;  /* Gold Card Yellow for Gold Card status */
         margin: 1rem 0;
-        color: #155724;
+        color: #4B0082;  /* Regulatory Purple text */
     }
     .evidence-tag {
         display: inline-block;
-        background-color: #e7f3ff;
+        background-color: #E6E6FA;  /* Compassion Lavender */
         padding: 0.25rem 0.75rem;
         border-radius: 12px;
         font-size: 0.85rem;
         margin: 0.25rem;
-        color: #0366d6;
+        color: #4B0082;  /* Regulatory Purple */
+        font-weight: 600;
+    }
+    
+    /* Update primary button colors */
+    .stButton > button[kind="primary"] {
+        background-color: #4B0082 !important;  /* Regulatory Purple */
+        color: white !important;
+    }
+    
+    .stButton > button[kind="primary"]:hover {
+        background-color: #6A0DAD !important;  /* Lighter purple on hover */
+    }
+    
+    /* Sidebar styling */
+    section[data-testid="stSidebar"] {
+        background-color: #F5F0FF;  /* Light lavender background */
+    }
+    
+    /* Metrics styling */
+    [data-testid="stMetricValue"] {
+        color: #4B0082;  /* Regulatory Purple */
+    }
+    
+    /* Tab styling */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        font-family: 'Inter', sans-serif;
+        font-weight: 600;
+        color: #708090;  /* Clinical Slate */
+    }
+    
+    .stTabs [aria-selected="true"] {
+        color: #4B0082 !important;  /* Regulatory Purple for active tab */
+        border-bottom-color: #4B0082 !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -86,9 +138,251 @@ if 'show_moh_check' not in st.session_state:
 # Load data
 db_a, db_b, db_c, db_e, db_f, icd10, therapeutic, otc = load_databases()
 
+# Clinical note parser
+def parse_clinical_note(note_text, db_a, db_b):
+    """Parse clinical note using Claude API to extract structured data"""
+    import anthropic
+    import json
+    
+    # Get API key from secrets (for deployed app) or environment
+    try:
+        api_key = st.secrets.get("ANTHROPIC_API_KEY", None)
+    except:
+        api_key = None
+    
+    if not api_key:
+        st.error("⚠️ Anthropic API key not configured. Add it to Streamlit secrets to enable note parsing.")
+        return None
+    
+    # Get valid options from databases
+    states = sorted(db_b['State'].unique().tolist())
+    payers = sorted(db_a['Payer_Name'].unique().tolist())[:50]  # Top 50 for context
+    drug_classes = sorted(db_b['Drug_Class'].unique().tolist())
+    
+    try:
+        client = anthropic.Anthropic(api_key=api_key)
+        
+        message = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=1024,
+            messages=[{
+                "role": "user",
+                "content": f"""Extract patient information from this clinical note. Return ONLY a JSON object with these fields:
+
+{{
+  "state": "two-letter state code or null",
+  "payer": "insurance payer name or null", 
+  "drug_class": "medication class from list below or null",
+  "diagnosis": "Chronic Migraine, Episodic Migraine, or Cluster Headache",
+  "age": integer age or null,
+  "prior_medications": ["list", "of", "medications"],
+  "confidence": "high/medium/low"
+}}
+
+Valid drug classes: {', '.join(drug_classes)}
+
+Common payers: {', '.join(payers[:20])}
+
+Clinical note:
+{note_text}
+
+Return ONLY the JSON object, no other text."""
+            }]
+        )
+        
+        # Extract JSON from response
+        response_text = message.content[0].text
+        
+        # Try to parse JSON
+        try:
+            parsed = json.loads(response_text)
+            return parsed
+        except:
+            # If not valid JSON, try to extract it
+            import re
+            json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+            if json_match:
+                parsed = json.loads(json_match.group())
+                return parsed
+            else:
+                st.error("Failed to parse API response")
+                return None
+                
+    except Exception as e:
+        st.error(f"API Error: {str(e)}")
+        return None
+
 # Header
-st.markdown('<div class="main-header">🧠 The Headache Vault</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-header">Prior Authorization Automation for Headache Medicine</div>', unsafe_allow_html=True)
+st.markdown("""
+<div style="text-align: left; margin-bottom: 2rem;">
+    <div class="main-header">🧠 The Headache Vault</div>
+    <div class="sub-header">Prior Authorization Automation for Headache Medicine</div>
+    <div style="color: #4B0082; font-size: 0.95rem; font-weight: 600; font-family: 'Inter', sans-serif;">
+        Infrastructure to Scale Specialist-Level Care
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+# Tab interface
+tab1, tab2 = st.tabs(["🔍 Quick Search", "📝 Clinical Note Input"])
+
+with tab1:
+    st.markdown("### Search by filters")
+    quick_search_mode = True
+    
+with tab2:
+    st.markdown("### Parse clinical notes with AI")
+    
+    st.info("💡 Paste clinic notes or describe the patient. AI will extract structured data for you.")
+    
+    # Example button
+    if st.button("📋 Load Example Note"):
+        example_note = """45-year-old female with chronic migraine, approximately 20 headache days per month. 
+Lives in Philadelphia, Pennsylvania. Has Independence Blue Cross commercial insurance. 
+Previously tried topiramate 100mg daily for 12 weeks - discontinued due to cognitive side effects. 
+Also failed propranolol 80mg BID for 8 weeks - inadequate response with less than 30% reduction in headache frequency.
+Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
+        st.session_state.clinical_note = example_note
+    
+    # Text area for clinical note
+    clinical_note = st.text_area(
+        "Clinical Note",
+        value=st.session_state.get('clinical_note', ''),
+        height=200,
+        placeholder="Paste patient information here...\n\nExample:\n45yo F with chronic migraine, 20+ days/month. Lives in PA, has Highmark BCBS. Failed topiramate and propranolol. Considering Aimovig.",
+        help="Include: location, insurance, diagnosis, medications tried, medication considering"
+    )
+    
+    # Parse button
+    if st.button("🤖 Parse Note with AI", type="primary", use_container_width=True):
+        if not clinical_note.strip():
+            st.warning("Please enter a clinical note to parse.")
+        else:
+            with st.spinner("🧠 Analyzing note..."):
+                parsed_data = parse_clinical_note(clinical_note, db_a, db_b)
+                
+                if parsed_data:
+                    st.session_state.parsed_data = parsed_data
+                    st.success("✅ Note parsed successfully!")
+    
+    # Display parsed data if available
+    if 'parsed_data' in st.session_state:
+        parsed = st.session_state.parsed_data
+        
+        st.markdown("---")
+        st.markdown("### 📊 Extracted Information")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            if parsed.get('state'):
+                st.metric("State", parsed['state'])
+            if parsed.get('age'):
+                st.metric("Age", f"{parsed['age']} years")
+        
+        with col2:
+            if parsed.get('diagnosis'):
+                st.metric("Diagnosis", parsed['diagnosis'])
+            if parsed.get('confidence'):
+                conf_emoji = {"high": "🟢", "medium": "🟡", "low": "🔴"}
+                st.metric("Confidence", f"{conf_emoji.get(parsed['confidence'], '⚪')} {parsed['confidence'].title()}")
+        
+        with col3:
+            if parsed.get('drug_class'):
+                st.metric("Medication", parsed['drug_class'])
+        
+        # Payer info
+        if parsed.get('payer'):
+            st.info(f"**Insurance:** {parsed['payer']}")
+        
+        # Prior medications
+        if parsed.get('prior_medications') and len(parsed['prior_medications']) > 0:
+            st.markdown("**Prior Medications:**")
+            for med in parsed['prior_medications']:
+                st.markdown(f"- {med}")
+        
+        # Edit mode
+        with st.expander("✏️ Edit Extracted Data", expanded=False):
+            st.markdown("Review and modify the extracted information before searching:")
+            
+            edited_state = st.selectbox("State", options=sorted(db_b['State'].unique().tolist()), 
+                                       index=sorted(db_b['State'].unique().tolist()).index(parsed.get('state', 'PA')) if parsed.get('state') in db_b['State'].unique() else 0)
+            
+            # Filter payers by edited state
+            state_payers = sorted(db_b[db_b['State'] == edited_state]['Payer_Name'].unique().tolist())
+            
+            # Try to match payer
+            payer_index = 0
+            if parsed.get('payer'):
+                for i, p in enumerate(state_payers):
+                    if parsed['payer'].lower() in p.lower() or p.lower() in parsed['payer'].lower():
+                        payer_index = i
+                        break
+            
+            edited_payer = st.selectbox("Payer", options=['All Payers'] + state_payers, index=payer_index)
+            
+            # Filter drugs by edited state
+            state_drugs = sorted(db_b[db_b['State'] == edited_state]['Drug_Class'].unique().tolist())
+            drug_index = 0
+            if parsed.get('drug_class') and parsed['drug_class'] in state_drugs:
+                drug_index = state_drugs.index(parsed['drug_class'])
+            
+            edited_drug = st.selectbox("Drug Class", options=state_drugs, index=drug_index)
+            
+            diagnosis_options = ["Chronic Migraine", "Episodic Migraine", "Cluster Headache"]
+            diag_index = 0
+            if parsed.get('diagnosis') and parsed['diagnosis'] in diagnosis_options:
+                diag_index = diagnosis_options.index(parsed['diagnosis'])
+            
+            edited_diagnosis = st.selectbox("Diagnosis", options=diagnosis_options, index=diag_index)
+            
+            edited_age = st.number_input("Age", min_value=1, max_value=120, value=parsed.get('age', 35))
+            
+            # Save edits
+            if st.button("💾 Save Edits"):
+                st.session_state.parsed_data.update({
+                    'state': edited_state,
+                    'payer': edited_payer,
+                    'drug_class': edited_drug,
+                    'diagnosis': edited_diagnosis,
+                    'age': edited_age
+                })
+                st.success("✅ Edits saved!")
+                st.rerun()
+        
+        # Search button
+        if st.button("🔎 Search with Extracted Data", type="primary", use_container_width=True):
+            # Perform search with parsed data
+            query = db_b[db_b['State'] == parsed['state']]
+            
+            if parsed.get('payer') and parsed['payer'] != 'All Payers':
+                # Try to match payer name flexibly
+                payer_matches = db_b[db_b['State'] == parsed['state']]['Payer_Name'].unique()
+                matched_payer = None
+                for p in payer_matches:
+                    if parsed['payer'].lower() in p.lower() or p.lower() in parsed['payer'].lower():
+                        matched_payer = p
+                        break
+                if matched_payer:
+                    query = query[query['Payer_Name'] == matched_payer]
+            
+            if parsed.get('drug_class'):
+                query = query[query['Drug_Class'] == parsed['drug_class']]
+            
+            # Filter by diagnosis
+            if parsed.get('diagnosis') == "Cluster Headache":
+                query = query[query['Drug_Class'].str.contains('Cluster', case=False, na=False)]
+            elif parsed.get('diagnosis') == "Chronic Migraine":
+                query = query[query['Medication_Category'].str.contains('Chronic|Preventive', case=False, na=False)]
+            else:  # Episodic
+                query = query[~query['Medication_Category'].str.contains('Chronic', case=False, na=False)]
+            
+            st.session_state.search_results = query
+            st.session_state.patient_age = parsed.get('age', 35)
+            st.session_state.show_results = True
+            st.rerun()
+    
+    quick_search_mode = False
 
 # Sidebar filters
 st.sidebar.header("🔍 Search Filters")
@@ -137,17 +431,25 @@ st.sidebar.markdown("---")
 
 # Show quick stats
 total_in_state = len(db_b[db_b['State'] == selected_state])
-st.sidebar.info(f"📊 {total_in_state} policies in {selected_state}")
+st.sidebar.markdown(f"""
+<div style='background-color: white; padding: 0.75rem; border-radius: 8px; border-left: 4px solid #4B0082; margin: 0.5rem 0;'>
+    <div style='color: #4B0082; font-weight: 600;'>📊 {total_in_state} policies in {selected_state}</div>
+</div>
+""", unsafe_allow_html=True)
 
 # Database coverage note
-st.sidebar.caption("💡 Database includes 752 policies across 50 states. Preventive gepant coverage expanding weekly.")
+st.sidebar.markdown("""
+<div style='color: #708090; font-size: 0.85rem; margin-top: 0.5rem; font-style: italic;'>
+    💡 Database: 752 policies across 50 states. Preventive gepant coverage expanding weekly.
+</div>
+""", unsafe_allow_html=True)
 
 search_clicked = st.sidebar.button("🔎 Search Policies", type="primary", use_container_width=True)
 
-# Main content area
-if search_clicked or st.session_state.search_results is not None:
+# Main content area - show results from either search method
+if (search_clicked or st.session_state.search_results is not None) or st.session_state.get('show_results', False):
     if search_clicked:
-        # Perform search
+        # Perform search from sidebar
         query = db_b[db_b['State'] == selected_state]
         
         if selected_payer != 'All Payers':
@@ -164,8 +466,10 @@ if search_clicked or st.session_state.search_results is not None:
             query = query[~query['Medication_Category'].str.contains('Chronic', case=False, na=False)]
         
         st.session_state.search_results = query
+        st.session_state.patient_age = patient_age
     
     results = st.session_state.search_results
+    patient_age_display = st.session_state.get('patient_age', patient_age)
     
     if len(results) == 0:
         st.warning("⚠️ No policies found for this combination.")
@@ -259,19 +563,23 @@ if search_clicked or st.session_state.search_results is not None:
                                           unsafe_allow_html=True)
                 
                 # Pediatric check
-                if patient_age < 18:
-                    ped_overrides = db_e[
-                        (db_e['Medication_Name'].str.contains(selected_drug, case=False, na=False)) |
-                        (db_e['Drug_Class'] == selected_drug)
-                    ]
+                if patient_age_display < 18:
+                    # Get drug class from results if not using sidebar
+                    check_drug = selected_drug if 'selected_drug' in dir() else (results.iloc[0]['Drug_Class'] if len(results) > 0 else None)
                     
-                    if len(ped_overrides) > 0:
-                        st.markdown('<div class="warning-box">👶 <strong>Pediatric Considerations</strong></div>', 
-                                  unsafe_allow_html=True)
-                        for _, ped_row in ped_overrides.iterrows():
-                            age_range = ped_row.get('Age_Range', 'See policy')
-                            restriction = ped_row.get('Restriction_Type', 'Age restriction')
-                            st.markdown(f"- **{age_range}:** {restriction}")
+                    if check_drug:
+                        ped_overrides = db_e[
+                            (db_e['Medication_Name'].str.contains(check_drug, case=False, na=False)) |
+                            (db_e['Drug_Class'] == check_drug)
+                        ]
+                        
+                        if len(ped_overrides) > 0:
+                            st.markdown('<div class="warning-box">👶 <strong>Pediatric Considerations</strong></div>', 
+                                      unsafe_allow_html=True)
+                            for _, ped_row in ped_overrides.iterrows():
+                                age_range = ped_row.get('Age_Range', 'See policy')
+                                restriction = ped_row.get('Restriction_Type', 'Age restriction')
+                                st.markdown(f"- **{age_range}:** {restriction}")
 
 # Action buttons
 st.markdown("---")
@@ -405,8 +713,9 @@ if st.session_state.show_moh_check:
 # Footer
 st.markdown("---")
 st.markdown("""
-<div style='text-align: center; color: #666; font-size: 0.9rem;'>
-    <strong>The Headache Vault</strong> | Demo Version 1.0 | February 2026<br>
+<div style='text-align: center; color: #708090; font-size: 0.9rem; font-family: Source Sans Pro, sans-serif;'>
+    <strong style='color: #4B0082;'>The Headache Vault</strong> | Demo Version 1.0 | February 2026<br>
+    <span style='color: #4B0082;'>Infrastructure to Scale Specialist-Level Care</span><br>
     752 payer policies • 50 states • 1,088 payers • Coverage expanding weekly<br>
     Clinical logic based on AHS 2021/2024, ACP 2025, ICHD-3 Criteria
 </div>
