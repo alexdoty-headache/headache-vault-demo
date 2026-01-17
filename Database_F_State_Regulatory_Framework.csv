@@ -1,0 +1,51 @@
+State,Gold_Card_Law,Gold_Card_Threshold,Gold_Card_Effective_Date,Pharmacy_Exclusion,Deemed_Approved_Provision,Deemed_Approved_Days,Anti_AI_Denial,Specialty_Reviewer_Requirement,First_Line_CGRP_Payer,Medicare_MAC,State_Specific_Law_Citation,CMS_0057_F_Tag,Continuity_of_Care_Days,Step_Therapy_Exception_Criteria,HVI_Data
+Alabama,FALSE,,,FALSE,FALSE,,FALSE,,,Palmetto GBA,,,,,AL
+Alaska,FALSE,,,FALSE,FALSE,,FALSE,,,Noridian,,,,,AK
+Arizona,FALSE,,,FALSE,FALSE,,FALSE,,,Noridian,,,,,AZ
+Arkansas,FALSE,,,FALSE,FALSE,,FALSE,,,Novitas Solutions,,,,,AR
+California,TRUE,90%,2024-01-01,FALSE,TRUE,30,FALSE,TRUE,,Noridian,CA AB 2244,TRUE,90,Contraindication OR Ineffective OR Stable on Med,CA
+Colorado,TRUE,90%,2026-01-01,FALSE,TRUE,30,FALSE,TRUE,,Novitas Solutions,CO HB 21-1237,TRUE,30,Contraindication OR Ineffective OR Adverse Event,CO
+Connecticut,TRUE,90%,2024-01-01,FALSE,TRUE,30,FALSE,TRUE,,National Government Services,CT PA 19-117,TRUE,90,Contraindication OR Ineffective OR Stable on Med,CT
+Delaware,TRUE,90%,2027-01-01,FALSE,TRUE,30,FALSE,FALSE,,Novitas Solutions,DE SB 75,TRUE,90,Contraindication OR Ineffective,DE
+Florida,TRUE,92%,2026-07-01,FALSE,FALSE,,FALSE,FALSE,Florida Blue (select plans),First Coast Service Options,FL HB 7021,TRUE,,Contraindication OR Ineffective,FL
+Georgia,TRUE,90%,2024-01-01,FALSE,TRUE,30,FALSE,FALSE,,Palmetto GBA,GA HB 1035,TRUE,90,Contraindication OR Ineffective OR Adverse Event,GA
+Hawaii,FALSE,,,FALSE,FALSE,,FALSE,,,Noridian,,,,,HI
+Idaho,FALSE,,,FALSE,FALSE,,FALSE,,,Noridian,,,,,ID
+Illinois,TRUE,90%,2024-01-01,TRUE,TRUE,30,FALSE,TRUE,,National Government Services,IL HB 5107,TRUE,90,Contraindication OR Ineffective OR Stable on Med,IL
+Indiana,FALSE,,,FALSE,FALSE,,FALSE,,,Wisconsin Physicians Service,,,,,IN
+Iowa,FALSE,,,FALSE,FALSE,,FALSE,,,Wisconsin Physicians Service,,,,,IA
+Kansas,TRUE,90%,2025-07-01,FALSE,TRUE,30,FALSE,TRUE,,Wisconsin Physicians Service,KS HB 2279,TRUE,60,Contraindication OR Ineffective OR Adverse Event,KS
+Kentucky,TRUE,90%,2024-07-01,FALSE,TRUE,30,FALSE,FALSE,,Palmetto GBA,KY HB 8,TRUE,90,Contraindication OR Ineffective,KY
+Louisiana,TRUE,90%,2024-01-01,FALSE,TRUE,30,FALSE,TRUE,,Palmetto GBA,LA HB 81,TRUE,90,Contraindication OR Ineffective OR Stable on Med,LA
+Maine,FALSE,,,FALSE,FALSE,,FALSE,,,National Government Services,,,,,ME
+Maryland,FALSE,,,FALSE,FALSE,,FALSE,,,Novitas Solutions,,,,,MD
+Massachusetts,FALSE,,,FALSE,FALSE,,FALSE,,,National Government Services,,,,,MA
+Michigan,FALSE,,,FALSE,FALSE,,FALSE,,,Wisconsin Physicians Service,,,,,MI
+Minnesota,TRUE,90%,2027-01-01,FALSE,TRUE,30,TRUE,TRUE,,National Government Services,MN SF 3546,TRUE,90,Contraindication OR Ineffective OR Adverse Event OR Stable on Med,MN
+Mississippi,FALSE,,,FALSE,FALSE,,FALSE,,,Palmetto GBA,,,,,MS
+Missouri,FALSE,,,FALSE,FALSE,,FALSE,,,Wisconsin Physicians Service,,,,,MO
+Montana,FALSE,,,FALSE,FALSE,,FALSE,,,Noridian,,,,,MT
+Nebraska,FALSE,,,FALSE,FALSE,,FALSE,,,Wisconsin Physicians Service,,,,,NE
+Nevada,TRUE,90%,2027-01-01,FALSE,TRUE,30,FALSE,FALSE,,Noridian,NV AB 177,TRUE,90,Contraindication OR Ineffective,NV
+New Hampshire,FALSE,,,FALSE,FALSE,,FALSE,,,National Government Services,,,,,NH
+New Jersey,FALSE,,,FALSE,FALSE,,FALSE,,,Novitas Solutions,,,,,NJ
+New Mexico,FALSE,,,FALSE,FALSE,,FALSE,,,Noridian,,,,,NM
+New York,FALSE,,,FALSE,FALSE,,FALSE,,,National Government Services,,,,,NY
+North Carolina,FALSE,,,FALSE,FALSE,,FALSE,,,Palmetto GBA,,,,,NC
+North Dakota,FALSE,,,FALSE,FALSE,,FALSE,,,Noridian,,,,,ND
+Ohio,TRUE,90%,2024-07-01,FALSE,TRUE,30,FALSE,TRUE,,Palmetto GBA,OH HB 122,TRUE,90,Contraindication OR Ineffective OR Adverse Event,OH
+Oklahoma,FALSE,,,FALSE,FALSE,,FALSE,,,Novitas Solutions,,,,,OK
+Oregon,FALSE,,,FALSE,FALSE,,FALSE,,,Noridian,,,,,OR
+Pennsylvania,TRUE,90%,2023-01-01,FALSE,TRUE,30,FALSE,TRUE,,Novitas Solutions,PA Act 146,TRUE,90,Contraindication OR Ineffective OR Adverse Event OR Stable on Med,PA
+Rhode Island,TRUE,90%,2024-01-01,FALSE,TRUE,30,FALSE,FALSE,,National Government Services,RI H 7598,TRUE,90,Contraindication OR Ineffective,RI
+South Carolina,FALSE,,,FALSE,FALSE,,FALSE,,,Palmetto GBA,,,,,SC
+South Dakota,FALSE,,,FALSE,FALSE,,FALSE,,,Noridian,,,,,SD
+Tennessee,TRUE,90%,2024-07-01,FALSE,TRUE,30,FALSE,FALSE,,Palmetto GBA,TN HB 1719,TRUE,90,Contraindication OR Ineffective,TN
+Texas,TRUE,90%,2024-01-01,FALSE,TRUE,30,FALSE,TRUE,,Novitas Solutions,TX HB 3459 / HB 3812,TRUE,90,Contraindication OR Ineffective OR Adverse Event OR Stable on Med,TX
+Utah,FALSE,,,FALSE,FALSE,,FALSE,,,Noridian,,,,,UT
+Vermont,FALSE,,,FALSE,FALSE,,FALSE,,,National Government Services,,,,,VT
+Virginia,FALSE,,,FALSE,FALSE,,FALSE,,,Palmetto GBA,,,,,VA
+Washington,TRUE,80%,2024-01-01,FALSE,TRUE,30,FALSE,TRUE,,Noridian,WA HB 1357,TRUE,90,Contraindication OR Ineffective OR Stable on Med,WA
+West Virginia,TRUE,90%,2027-01-01,FALSE,TRUE,30,FALSE,FALSE,,Palmetto GBA,WV HB 2263,TRUE,90,Contraindication OR Ineffective,WV
+Wisconsin,FALSE,,,FALSE,FALSE,,FALSE,,,Wisconsin Physicians Service,,,,,WI
+Wyoming,FALSE,,,FALSE,FALSE,,FALSE,,,Noridian,,,,,WY
