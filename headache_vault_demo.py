@@ -108,11 +108,12 @@ selected_payer = st.sidebar.selectbox(
     options=['All Payers'] + sorted(state_payers)
 )
 
-# Drug class selection
-drug_classes = sorted(db_b['Drug_Class'].unique().tolist())
+# Drug class selection - filtered by state
+state_drug_classes = sorted(db_b[db_b['State'] == selected_state]['Drug_Class'].unique().tolist())
 selected_drug = st.sidebar.selectbox(
     "Medication Class",
-    options=drug_classes
+    options=state_drug_classes,
+    help=f"{len(state_drug_classes)} drug classes available in {selected_state}"
 )
 
 # Headache type
@@ -132,6 +133,15 @@ patient_age = st.sidebar.number_input(
 )
 
 # Search button
+st.sidebar.markdown("---")
+
+# Show quick stats
+total_in_state = len(db_b[db_b['State'] == selected_state])
+st.sidebar.info(f"📊 {total_in_state} policies in {selected_state}")
+
+# Database coverage note
+st.sidebar.caption("💡 Database includes 752 policies across 50 states. Preventive gepant coverage expanding weekly.")
+
 search_clicked = st.sidebar.button("🔎 Search Policies", type="primary", use_container_width=True)
 
 # Main content area
@@ -158,7 +168,17 @@ if search_clicked or st.session_state.search_results is not None:
     results = st.session_state.search_results
     
     if len(results) == 0:
-        st.warning("⚠️ No policies found for this combination. Try different filters.")
+        st.warning("⚠️ No policies found for this combination.")
+        st.info("""
+        **Possible reasons:**
+        - This payer may not have a specific policy for this drug class
+        - Preventive gepant policies (Nurtec, Qulipta) are still being audited for some states
+        - Try selecting a different medication class or payer
+        
+        **Coverage notes:**
+        - All PA payers have policies for: CGRP mAbs, Botox, Gepants (acute)
+        - Preventive gepant coverage expanding weekly
+        """)
     else:
         # Display summary
         st.markdown("---")
@@ -387,6 +407,7 @@ st.markdown("---")
 st.markdown("""
 <div style='text-align: center; color: #666; font-size: 0.9rem;'>
     <strong>The Headache Vault</strong> | Demo Version 1.0 | February 2026<br>
+    752 payer policies • 50 states • 1,088 payers • Coverage expanding weekly<br>
     Clinical logic based on AHS 2021/2024, ACP 2025, ICHD-3 Criteria
 </div>
 """, unsafe_allow_html=True)
