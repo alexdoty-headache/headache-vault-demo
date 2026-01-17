@@ -224,20 +224,20 @@ if search_clicked or st.session_state.search_results is not None:
                 
                 # Get denial code details
                 if pd.notna(row.get('Vault_Denial_Code')):
-                    denial_info = db_c[db_c['Vault Denial Code'] == row['Vault_Denial_Code']]
+                    denial_info = db_c[db_c['Vault_Denial_Code'] == row['Vault_Denial_Code']]
                     if len(denial_info) > 0:
                         denial_row = denial_info.iloc[0]
                         
                         with st.expander("💬 Clinical Appeal Language"):
-                            st.markdown(f"**Denial Code:** {denial_row['Vault Denial Code']}")
-                            st.markdown(f"**Reason:** {denial_row.get('Denial Reason', 'N/A')}")
+                            st.markdown(f"**Denial Code:** {denial_row['Vault_Denial_Code']}")
+                            st.markdown(f"**Reason:** {denial_row.get('Denial_Reason', 'N/A')}")
                             
-                            if pd.notna(denial_row.get('Winning Clinical Phrases')):
+                            if pd.notna(denial_row.get('Winning_Clinical_Phrases_Universal')):
                                 st.markdown("**Recommended Appeal Language:**")
-                                st.markdown(f"> {denial_row['Winning Clinical Phrases']}")
+                                st.markdown(f"> {denial_row['Winning_Clinical_Phrases_Universal']}")
                             
-                            if pd.notna(denial_row.get('Source Authority')):
-                                st.markdown(f'<span class="evidence-tag">📚 {denial_row["Source Authority"]}</span>', 
+                            if pd.notna(denial_row.get('Source_Authority')):
+                                st.markdown(f'<span class="evidence-tag">📚 {denial_row["Source_Authority"]}</span>', 
                                           unsafe_allow_html=True)
                 
                 # Pediatric check
@@ -279,7 +279,7 @@ with col3:
                 icd_filter = icd10[icd10['ICD10_Code'].str.contains('G43.*0', regex=True)]
             
             st.dataframe(
-                icd_filter[['ICD10_Code', 'Short_Description', 'Clinical_Criteria']],
+                icd_filter[['ICD10_Code', 'ICD10_Description', 'Diagnostic_Criteria_Summary']],
                 use_container_width=True,
                 hide_index=True
             )
@@ -321,11 +321,11 @@ Line of Business: {row['LOB']}
         
         # Add denial code language
         if pd.notna(row.get('Vault_Denial_Code')):
-            denial_info = db_c[db_c['Vault Denial Code'] == row['Vault_Denial_Code']]
+            denial_info = db_c[db_c['Vault_Denial_Code'] == row['Vault_Denial_Code']]
             if len(denial_info) > 0:
                 denial_row = denial_info.iloc[0]
-                if pd.notna(denial_row.get('Winning Clinical Phrases')):
-                    pa_text += f"\n**Clinical Rationale:**\n{denial_row['Winning Clinical Phrases']}\n"
+                if pd.notna(denial_row.get('Winning_Clinical_Phrases_Universal')):
+                    pa_text += f"\n**Clinical Rationale:**\n{denial_row['Winning_Clinical_Phrases_Universal']}\n"
         
         pa_text += f"\n**REFERENCE CITATIONS**\n"
         pa_text += "- American Headache Society Position Statement 2024\n"
