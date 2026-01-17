@@ -5,10 +5,17 @@ from datetime import datetime
 # Page configuration
 st.set_page_config(
     page_title="The Headache Vault - PA Automation Demo",
-    page_icon="🧠",
+    page_icon="💊",  # Medical/pill icon instead of brain
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# Force light theme
+st.markdown("""
+<script>
+    window.parent.document.documentElement.setAttribute('data-theme', 'light');
+</script>
+""", unsafe_allow_html=True)
 
 # Custom CSS with Headache Vault brand identity
 st.markdown("""
@@ -16,14 +23,25 @@ st.markdown("""
     /* Import brand fonts */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Source+Sans+Pro:wght@400;600&display=swap');
     
+    /* Force light theme and readable backgrounds */
+    .stApp {
+        background-color: #FFFFFF !important;
+    }
+    
+    .main .block-container {
+        background-color: #FFFFFF !important;
+    }
+    
     /* Global font override */
     html, body, [class*="css"] {
         font-family: 'Source Sans Pro', sans-serif;
+        color: #262730 !important;
     }
     
     h1, h2, h3, h4, h5, h6 {
         font-family: 'Inter', sans-serif;
         font-weight: 700;
+        color: #262730 !important;
     }
     
     .main-header {
@@ -86,22 +104,67 @@ st.markdown("""
     
     /* Sidebar styling */
     section[data-testid="stSidebar"] {
-        background-color: #FAFAFA;  /* Light gray instead of lavender */
+        background-color: #FAFAFA !important;  /* Light gray */
     }
     
-    section[data-testid="stSidebar"] * {
-        color: #262730 !important;  /* Force dark text in sidebar */
+    /* Fix sidebar form elements - dropdowns, radio buttons, etc. */
+    section[data-testid="stSidebar"] .stSelectbox > div > div {
+        background-color: #FFFFFF !important;  /* White background for dropdowns */
+        color: #262730 !important;  /* Dark text */
     }
     
+    section[data-testid="stSidebar"] input {
+        background-color: #FFFFFF !important;
+        color: #262730 !important;
+    }
+    
+    section[data-testid="stSidebar"] [data-baseweb="select"] {
+        background-color: #FFFFFF !important;
+    }
+    
+    section[data-testid="stSidebar"] [data-baseweb="select"] > div {
+        background-color: #FFFFFF !important;
+        color: #262730 !important;
+    }
+    
+    /* Dropdown menu items */
+    [data-baseweb="popover"] {
+        background-color: #FFFFFF !important;
+    }
+    
+    [role="option"] {
+        background-color: #FFFFFF !important;
+        color: #262730 !important;
+    }
+    
+    [role="option"]:hover {
+        background-color: #F0F0F0 !important;
+    }
+    
+    /* Radio buttons */
+    section[data-testid="stSidebar"] [data-testid="stRadio"] label {
+        color: #262730 !important;
+    }
+    
+    section[data-testid="stSidebar"] [data-testid="stRadio"] > div {
+        color: #262730 !important;
+    }
+    
+    /* Number input */
+    section[data-testid="stSidebar"] input[type="number"] {
+        background-color: #FFFFFF !important;
+        color: #262730 !important;
+    }
+    
+    /* All sidebar labels */
     section[data-testid="stSidebar"] label {
-        color: #262730 !important;  /* Dark labels */
-    }
-    
-    section[data-testid="stSidebar"] .stSelectbox label,
-    section[data-testid="stSidebar"] .stRadio label,
-    section[data-testid="stSidebar"] .stNumberInput label {
         color: #262730 !important;
         font-weight: 600 !important;
+    }
+    
+    /* Sidebar header */
+    section[data-testid="stSidebar"] h2 {
+        color: #262730 !important;
     }
     
     /* Metrics styling */
@@ -123,12 +186,39 @@ st.markdown("""
         font-family: 'Inter', sans-serif;
         font-weight: 600;
         color: #5A5A5A;  /* Readable gray for inactive tabs */
+        background-color: transparent !important;
     }
     
     .stTabs [aria-selected="true"] {
         color: #262730 !important;  /* Dark text for active tab */
         border-bottom-color: #4B0082 !important;  /* Purple underline for active */
+        background-color: transparent !important;
     }
+    
+    /* General form elements in main area */
+    .stSelectbox > div > div,
+    .stTextInput > div > div,
+    .stTextArea > div > div {
+        background-color: #FFFFFF !important;
+        color: #262730 !important;
+    }
+    
+    input, textarea, select {
+        background-color: #FFFFFF !important;
+        color: #262730 !important;
+    }
+    
+    /* Expander styling */
+    .streamlit-expanderHeader {
+        background-color: #F8F9FA !important;
+        color: #262730 !important;
+    }
+    
+    /* Info boxes, warnings, etc */
+    .stAlert {
+        background-color: #F8F9FA !important;
+    }
+
 </style>
 """, unsafe_allow_html=True)
 
