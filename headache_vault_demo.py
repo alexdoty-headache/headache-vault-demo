@@ -35,7 +35,7 @@ st.markdown("""
     }
     .sub-header {
         font-size: 1.2rem;
-        color: #708090;  /* Clinical Slate */
+        color: #5A5A5A;  /* Readable gray */
         margin-bottom: 2rem;
         font-family: 'Source Sans Pro', sans-serif;
     }
@@ -61,7 +61,7 @@ st.markdown("""
         border-radius: 8px;
         border-left: 4px solid #FFD700;  /* Gold Card Yellow for Gold Card status */
         margin: 1rem 0;
-        color: #4B0082;  /* Regulatory Purple text */
+        color: #262730;  /* Dark text for readability */
     }
     .evidence-tag {
         display: inline-block;
@@ -70,7 +70,7 @@ st.markdown("""
         border-radius: 12px;
         font-size: 0.85rem;
         margin: 0.25rem;
-        color: #4B0082;  /* Regulatory Purple */
+        color: #262730;  /* Dark text for readability */
         font-weight: 600;
     }
     
@@ -86,12 +86,32 @@ st.markdown("""
     
     /* Sidebar styling */
     section[data-testid="stSidebar"] {
-        background-color: #F5F0FF;  /* Light lavender background */
+        background-color: #FAFAFA;  /* Light gray instead of lavender */
+    }
+    
+    section[data-testid="stSidebar"] * {
+        color: #262730 !important;  /* Force dark text in sidebar */
+    }
+    
+    section[data-testid="stSidebar"] label {
+        color: #262730 !important;  /* Dark labels */
+    }
+    
+    section[data-testid="stSidebar"] .stSelectbox label,
+    section[data-testid="stSidebar"] .stRadio label,
+    section[data-testid="stSidebar"] .stNumberInput label {
+        color: #262730 !important;
+        font-weight: 600 !important;
     }
     
     /* Metrics styling */
     [data-testid="stMetricValue"] {
-        color: #4B0082;  /* Regulatory Purple */
+        color: #262730;  /* Dark readable text for metric values */
+        font-weight: 700;
+    }
+    
+    [data-testid="stMetricLabel"] {
+        color: #5A5A5A;  /* Gray for metric labels */
     }
     
     /* Tab styling */
@@ -102,12 +122,12 @@ st.markdown("""
     .stTabs [data-baseweb="tab"] {
         font-family: 'Inter', sans-serif;
         font-weight: 600;
-        color: #708090;  /* Clinical Slate */
+        color: #5A5A5A;  /* Readable gray for inactive tabs */
     }
     
     .stTabs [aria-selected="true"] {
-        color: #4B0082 !important;  /* Regulatory Purple for active tab */
-        border-bottom-color: #4B0082 !important;
+        color: #262730 !important;  /* Dark text for active tab */
+        border-bottom-color: #4B0082 !important;  /* Purple underline for active */
     }
 </style>
 """, unsafe_allow_html=True)
@@ -215,9 +235,9 @@ Return ONLY the JSON object, no other text."""
 # Header
 st.markdown("""
 <div style="text-align: left; margin-bottom: 2rem;">
-    <div class="main-header">🧠 The Headache Vault</div>
+    <div class="main-header">The Headache Vault</div>
     <div class="sub-header">Prior Authorization Automation for Headache Medicine</div>
-    <div style="color: #4B0082; font-size: 0.95rem; font-weight: 600; font-family: 'Inter', sans-serif;">
+    <div style="color: #262730; font-size: 0.95rem; font-weight: 400; font-family: 'Source Sans Pro', sans-serif;">
         Infrastructure to Scale Specialist-Level Care
     </div>
 </div>
@@ -433,13 +453,13 @@ st.sidebar.markdown("---")
 total_in_state = len(db_b[db_b['State'] == selected_state])
 st.sidebar.markdown(f"""
 <div style='background-color: white; padding: 0.75rem; border-radius: 8px; border-left: 4px solid #4B0082; margin: 0.5rem 0;'>
-    <div style='color: #4B0082; font-weight: 600;'>📊 {total_in_state} policies in {selected_state}</div>
+    <div style='color: #262730; font-weight: 600;'>📊 {total_in_state} policies in {selected_state}</div>
 </div>
 """, unsafe_allow_html=True)
 
 # Database coverage note
 st.sidebar.markdown("""
-<div style='color: #708090; font-size: 0.85rem; margin-top: 0.5rem; font-style: italic;'>
+<div style='color: #5A5A5A; font-size: 0.85rem; margin-top: 0.5rem; font-style: italic;'>
     💡 Database: 752 policies across 50 states. Preventive gepant coverage expanding weekly.
 </div>
 """, unsafe_allow_html=True)
@@ -713,9 +733,9 @@ if st.session_state.show_moh_check:
 # Footer
 st.markdown("---")
 st.markdown("""
-<div style='text-align: center; color: #708090; font-size: 0.9rem; font-family: Source Sans Pro, sans-serif;'>
+<div style='text-align: center; color: #5A5A5A; font-size: 0.9rem; font-family: Source Sans Pro, sans-serif;'>
     <strong style='color: #4B0082;'>The Headache Vault</strong> | Demo Version 1.0 | February 2026<br>
-    <span style='color: #4B0082;'>Infrastructure to Scale Specialist-Level Care</span><br>
+    Infrastructure to Scale Specialist-Level Care<br>
     752 payer policies • 50 states • 1,088 payers • Coverage expanding weekly<br>
     Clinical logic based on AHS 2021/2024, ACP 2025, ICHD-3 Criteria
 </div>
