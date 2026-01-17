@@ -30,6 +30,7 @@ st.markdown("""
         border-radius: 8px;
         border-left: 4px solid #1f4788;
         margin: 1rem 0;
+        color: #262730;
     }
     .warning-box {
         background-color: #fff3cd;
@@ -37,6 +38,7 @@ st.markdown("""
         border-radius: 8px;
         border-left: 4px solid #ffc107;
         margin: 1rem 0;
+        color: #856404;
     }
     .success-box {
         background-color: #d4edda;
@@ -44,6 +46,7 @@ st.markdown("""
         border-radius: 8px;
         border-left: 4px solid #28a745;
         margin: 1rem 0;
+        color: #155724;
     }
     .evidence-tag {
         display: inline-block;
@@ -193,16 +196,11 @@ if search_clicked or st.session_state.search_results is not None:
                 if row['Step_Therapy_Required'] == 'Yes':
                     st.markdown("### 🔄 Step Therapy Requirements")
                     
-                    st.markdown(f'<div class="step-box">'
-                              f'<strong>Step 1:</strong> {row["Step_1_Requirement"]}<br>'
-                              f'<strong>Duration:</strong> {row["Step_1_Duration"]}'
-                              f'</div>', unsafe_allow_html=True)
+                    # Use Streamlit info box instead of custom HTML
+                    st.info(f"**Step 1:** {row['Step_1_Requirement']}\n\n**Duration:** {row['Step_1_Duration']}")
                     
                     if pd.notna(row['Step_2_Requirement']) and row['Step_2_Requirement'] != 'N/A':
-                        st.markdown(f'<div class="step-box">'
-                                  f'<strong>Step 2:</strong> {row["Step_2_Requirement"]}<br>'
-                                  f'<strong>Duration:</strong> {row.get("Step_2_Duration", "See policy")}'
-                                  f'</div>', unsafe_allow_html=True)
+                        st.info(f"**Step 2:** {row['Step_2_Requirement']}\n\n**Duration:** {row.get('Step_2_Duration', 'See policy')}")
                 else:
                     st.markdown('<div class="success-box">✅ No step therapy required</div>', unsafe_allow_html=True)
                 
