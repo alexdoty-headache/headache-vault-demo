@@ -280,18 +280,26 @@ def parse_clinical_note(note_text, db_a, db_b):
                 "content": f"""Extract patient information from this clinical note. Return ONLY a JSON object with these fields:
 
 {{
-  "state": "two-letter state code or null",
-  "payer": "insurance payer name or null", 
+  "state": "two-letter state code (e.g., PA, NY, CA) or null",
+  "payer": "exact insurance payer name from list below, or closest match, or null", 
   "drug_class": "medication class from list below or null",
   "diagnosis": "Chronic Migraine, Episodic Migraine, or Cluster Headache",
   "age": integer age or null,
-  "prior_medications": ["list", "of", "medications"],
+  "prior_medications": ["list", "of", "failed", "medications"],
   "confidence": "high/medium/low"
 }}
 
+IMPORTANT: For payer, use the EXACT name from this list if mentioned:
+{', '.join(payers[:30])}
+
 Valid drug classes: {', '.join(drug_classes)}
 
-Common payers: {', '.join(payers[:20])}
+Examples of drug class mapping:
+- Aimovig, Ajovy, Emgality, erenumab, fremanezumab, galcanezumab → "CGRP mAbs"
+- Ubrelvy, Nurtec ODT, ubrogepant, rimegepant → "Gepants"
+- Qulipta, atogepant → "Qulipta"
+- Botox, onabotulinumtoxinA → "Botox"
+- Vyepti, eptinezumab → "Vyepti"
 
 Clinical note:
 {note_text}
@@ -306,6 +314,31 @@ Return ONLY the JSON object, no other text."""
         # Try to parse JSON
         try:
             parsed = json.loads(response_text)
+            
+            # Validate and fuzzy-match payer name
+            if parsed.get('payer'):
+                payer_input = parsed['payer'].lower().strip()
+                all_payers = db_a['Payer Name'].unique()
+                
+                # Try exact match first (case insensitive)
+                exact_match = None
+                for p in all_payers:
+                    if p.lower() == payer_input:
+                        exact_match = p
+                        break
+                
+                # If no exact match, try partial matching
+                if not exact_match:
+                    for p in all_payers:
+                        # Check if input is contained in database name or vice versa
+                        if payer_input in p.lower() or p.lower() in payer_input:
+                            exact_match = p
+                            break
+                
+                # Update with matched name
+                if exact_match:
+                    parsed['payer'] = exact_match
+            
             return parsed
         except:
             # If not valid JSON, try to extract it
