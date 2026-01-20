@@ -277,25 +277,33 @@ def parse_clinical_note(note_text, db_a, db_b):
             max_tokens=1024,
             messages=[{
                 "role": "user",
-                "content": f"""Extract patient information from this clinical note. Return ONLY a JSON object with these fields:
+                "content": f"""Extract patient information from this clinical note. Return ONLY a JSON object.
 
+CRITICAL: Look for insurance/payer information carefully. Examples:
+- "Has Independence Blue Cross" → payer: "Independence Blue Cross"
+- "Has Highmark insurance" → payer: "Highmark Blue Cross Blue Shield"
+- "Aetna commercial plan" → payer: "Aetna"
+- "UnitedHealthcare" → payer: "UnitedHealthcare"
+
+JSON format:
 {{
-  "state": "two-letter state code (e.g., PA, NY, CA) or null",
-  "payer": "exact insurance payer name from list below, or closest match, or null", 
-  "drug_class": "medication class from list below or null",
+  "state": "two-letter state code (PA, NY, CA, etc) or null",
+  "payer": "EXACT insurance company name or null - LOOK FOR THIS CAREFULLY", 
+  "drug_class": "medication class from drug list or null",
   "diagnosis": "Chronic Migraine, Episodic Migraine, or Cluster Headache",
   "age": integer age or null,
-  "prior_medications": ["list", "of", "failed", "medications"],
+  "prior_medications": ["medications that failed"],
   "confidence": "high/medium/low"
 }}
 
-IMPORTANT: For payer, use the EXACT name from this list if mentioned:
-{', '.join(payers[:30])}
+Common payers in database:
+{', '.join(payers[:40])}
 
-Valid drug classes: {', '.join(drug_classes)}
+Valid drug classes:
+{', '.join(drug_classes)}
 
-Examples of drug class mapping:
-- Aimovig, Ajovy, Emgality, erenumab, fremanezumab, galcanezumab → "CGRP mAbs"
+Medication name to class mapping:
+- Aimovig, Ajovy, Emgality, erenumab → "CGRP mAbs"
 - Ubrelvy, Nurtec ODT, ubrogepant, rimegepant → "Gepants"
 - Qulipta, atogepant → "Qulipta"
 - Botox, onabotulinumtoxinA → "Botox"
@@ -304,12 +312,16 @@ Examples of drug class mapping:
 Clinical note:
 {note_text}
 
-Return ONLY the JSON object, no other text."""
+Return ONLY the JSON object with all fields filled in. If you see ANY mention of insurance or payer, include it in the "payer" field."""
             }]
         )
         
         # Extract JSON from response
         response_text = message.content[0].text
+        
+        # Debug: Show raw response
+        st.write("🔍 DEBUG - Raw AI Response:")
+        st.code(response_text, language="json")
         
         # Try to parse JSON
         try:
@@ -338,6 +350,11 @@ Return ONLY the JSON object, no other text."""
                 # Update with matched name
                 if exact_match:
                     parsed['payer'] = exact_match
+                    st.write(f"✅ DEBUG - Payer matched: '{payer_input}' → '{exact_match}'")
+                else:
+                    st.write(f"❌ DEBUG - No payer match found for: '{payer_input}'")
+            else:
+                st.write("⚠️ DEBUG - No payer in AI response")
             
             return parsed
         except:
