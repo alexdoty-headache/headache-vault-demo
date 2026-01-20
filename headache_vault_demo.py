@@ -433,9 +433,21 @@ st.markdown("""
     /* NUCLEAR OPTION - FORCE ALL TEXT VISIBLE */
     /* ===================================================================== */
     
-    /* Force all text elements to be dark */
-    p, span, div, label, li, td, th, h1, h2, h3, h4, h5, h6 {
+    /* Force all text elements to be dark EXCEPT primary buttons */
+    p:not(.stButton [kind="primary"] *), 
+    span:not(.stButton [kind="primary"] *), 
+    div:not(.stButton [kind="primary"] *), 
+    label, li, td, th, h1, h2, h3, h4, h5, h6 {
         color: #262730 !important;
+    }
+    
+    /* PRIMARY BUTTONS - Keep white text */
+    .stButton > button[kind="primary"],
+    .stButton > button[kind="primary"] *,
+    button[kind="primary"] span,
+    button[kind="primary"] div,
+    button[kind="primary"] p {
+        color: white !important;
     }
     
     /* Except for elements with specific styling */
@@ -916,31 +928,27 @@ elif st.session_state.current_page == 'Search':
             
             # Display each policy as a professional card
             for idx, row in results.iterrows():
-                # Build policy card HTML
-                payer_badge = f'<span class="policy-badge">{row["State"]} | {row["LOB"]}</span>'
-                
-                card_html = f"""
+                # Build policy card with container
+                st.markdown(f"""
                 <div class="policy-card">
                     <div class="policy-header">
                         <div>
                             <div class="policy-title">🏥 {row['Payer_Name']}</div>
-                            {payer_badge}
+                            <span class="policy-badge">{row["State"]} | {row["LOB"]}</span>
                         </div>
                     </div>
-                """
+                </div>
+                """, unsafe_allow_html=True)
                 
-                # Step Therapy Section
+                # Step Therapy Section - use native Streamlit
                 if row['Step_Therapy_Required'] == 'Yes':
-                    card_html += """
-                    <div class="policy-section">
-                        <div class="policy-section-title">Step Therapy Required</div>
-                    """
+                    st.markdown('<div class="policy-section"><div class="policy-section-title">Step Therapy Required</div>', unsafe_allow_html=True)
                     
                     step_therapies = str(row.get('Step_Therapy_Requirements', 'Not specified')).split(';')
                     durations = str(row.get('Step_Therapy_Duration', 'Trial duration not specified')).split(';')
                     
                     for i, (therapy, duration) in enumerate(zip(step_therapies, durations if len(durations) == len(step_therapies) else ['Trial required'] * len(step_therapies)), 1):
-                        card_html += f"""
+                        st.markdown(f"""
                         <div class="step-item">
                             <div class="step-number">{i}</div>
                             <div>
@@ -948,23 +956,23 @@ elif st.session_state.current_page == 'Search':
                                 <small style="color: #708090;">{duration.strip()}</small>
                             </div>
                         </div>
-                        """
+                        """, unsafe_allow_html=True)
                     
-                    card_html += "</div>"
+                    st.markdown("</div>", unsafe_allow_html=True)
                 else:
-                    card_html += """
+                    st.markdown("""
                     <div class="policy-section">
                         <div style="background: #F0FFF4; padding: 1rem; border-radius: 8px; border-left: 4px solid #10B981;">
                             <strong style="color: #10B981;">✅ No Step Therapy Required</strong><br>
                             <small style="color: #666;">This medication can be prescribed without prior trials</small>
                         </div>
                     </div>
-                    """
+                    """, unsafe_allow_html=True)
                 
                 # Gold Card Status
                 if pd.notna(row.get('Gold_Card_Available')) and row['Gold_Card_Available'] == 'Yes':
                     threshold_text = row.get('Gold_Card_Threshold', 'Check state requirements')
-                    card_html += f"""
+                    st.markdown(f"""
                     <div class="policy-section">
                         <div class="gold-card-badge">
                             🏆 Gold Card Available
@@ -973,11 +981,7 @@ elif st.session_state.current_page == 'Search':
                             {threshold_text}
                         </div>
                     </div>
-                    """
-                
-                card_html += "</div>"
-                
-                st.markdown(card_html, unsafe_allow_html=True)
+                    """, unsafe_allow_html=True)
                 
                 # Action buttons below the card
                 col1, col2, col3, col4 = st.columns([2,2,2,6])
@@ -1321,8 +1325,6 @@ st.markdown("---")
 st.markdown("""
 <div class="production-footer">
     <div style="margin-bottom: 1rem;">
-        <span class="footer-badge">🔒 HIPAA Compliant</span>
-        <span class="footer-badge">🔐 SOC 2 Type II</span>
         <span class="footer-badge">📊 CMS Data Sources</span>
         <span class="footer-badge">🏥 State DOI Verified</span>
     </div>
