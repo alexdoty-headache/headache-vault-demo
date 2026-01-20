@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+import json
+import os
 
 # Page configuration
 st.set_page_config(
@@ -9,6 +11,157 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# ============================================================================
+# ALIAS LEARNING SYSTEM
+# ============================================================================
+
+ALIAS_FILE = "learned_aliases.json"
+
+# Built-in common aliases (starting knowledge)
+DEFAULT_ALIASES = {
+    "payers": {
+        # Independence Blue Cross
+        "ibx": "Independence Blue Cross",
+        "independence": "Independence Blue Cross",
+        "ibc": "Independence Blue Cross",
+        
+        # Blue Cross Blue Shield variants
+        "bcbs": "Blue Cross Blue Shield",
+        "blue cross": "Blue Cross Blue Shield",
+        "bluecross": "Blue Cross Blue Shield",
+        
+        # Highmark
+        "highmark": "Highmark Blue Cross Blue Shield",
+        "highmark bcbs": "Highmark Blue Cross Blue Shield",
+        
+        # Aetna
+        "aetna": "Aetna",
+        
+        # UnitedHealthcare
+        "uhc": "UnitedHealthcare",
+        "united": "UnitedHealthcare",
+        "unitedhealthcare": "UnitedHealthcare",
+        "united healthcare": "UnitedHealthcare",
+        
+        # Cigna
+        "cigna": "Cigna",
+        
+        # Humana
+        "humana": "Humana",
+        
+        # Kaiser
+        "kaiser": "Kaiser Permanente",
+        "kp": "Kaiser Permanente",
+        
+        # Anthem
+        "anthem": "Anthem Blue Cross",
+        "anthem bcbs": "Anthem Blue Cross Blue Shield",
+        
+        # Medicare/Medicaid
+        "medicare": "Medicare",
+        "medicaid": "Medicaid",
+    },
+    "medications": {
+        # CGRP mAbs
+        "aimovig": "CGRP mAbs",
+        "erenumab": "CGRP mAbs",
+        "ajovy": "CGRP mAbs",
+        "fremanezumab": "CGRP mAbs",
+        "emgality": "CGRP mAbs",
+        "galcanezumab": "CGRP mAbs",
+        
+        # Gepants
+        "ubrelvy": "Gepants",
+        "ubrogepant": "Gepants",
+        "nurtec": "Gepants",
+        "nurtec odt": "Gepants",
+        "rimegepant": "Gepants",
+        
+        # Qulipta (separate category in some systems)
+        "qulipta": "Qulipta",
+        "atogepant": "Qulipta",
+        
+        # Vyepti
+        "vyepti": "Vyepti",
+        "eptinezumab": "Vyepti",
+        
+        # Botox
+        "botox": "Botox",
+        "onabotulinumtoxina": "Botox",
+        "onabotulinum": "Botox",
+        "botulinum": "Botox",
+        
+        # Common preventives (for step therapy documentation)
+        "topamax": "topiramate",
+        "depakote": "valproate",
+        "inderal": "propranolol",
+        "elavil": "amitriptyline",
+        "pamelor": "nortriptyline",
+        "effexor": "venlafaxine",
+        "cymbalta": "duloxetine",
+    }
+}
+
+def load_aliases():
+    """Load aliases from file, merging with defaults"""
+    aliases = {
+        "payers": dict(DEFAULT_ALIASES["payers"]),
+        "medications": dict(DEFAULT_ALIASES["medications"])
+    }
+    
+    if os.path.exists(ALIAS_FILE):
+        try:
+            with open(ALIAS_FILE, 'r') as f:
+                learned = json.load(f)
+                # Merge learned aliases (they take precedence)
+                aliases["payers"].update(learned.get("payers", {}))
+                aliases["medications"].update(learned.get("medications", {}))
+        except:
+            pass
+    
+    return aliases
+
+def save_alias(alias_type, alias, canonical_name):
+    """Save a new alias to the learned aliases file"""
+    # Load existing
+    learned = {"payers": {}, "medications": {}}
+    if os.path.exists(ALIAS_FILE):
+        try:
+            with open(ALIAS_FILE, 'r') as f:
+                learned = json.load(f)
+        except:
+            pass
+    
+    # Add new alias
+    if alias_type not in learned:
+        learned[alias_type] = {}
+    learned[alias_type][alias.lower().strip()] = canonical_name
+    
+    # Save
+    with open(ALIAS_FILE, 'w') as f:
+        json.dump(learned, f, indent=2)
+    
+    return True
+
+def resolve_alias(text, alias_type, aliases):
+    """Check if text matches any known alias and return canonical name"""
+    if not text:
+        return None
+    
+    text_lower = text.lower().strip()
+    alias_dict = aliases.get(alias_type, {})
+    
+    # Direct match
+    if text_lower in alias_dict:
+        return alias_dict[text_lower]
+    
+    # Partial match (alias contained in text or text contained in alias)
+    for alias, canonical in alias_dict.items():
+        if alias in text_lower or text_lower in alias:
+            return canonical
+    
+    return None
 
 # Force light theme
 st.markdown("""
@@ -841,6 +994,11 @@ def parse_clinical_note(note_text, db_a, db_b):
         st.error("⚠️ Anthropic API key not configured. Add it to Streamlit secrets to enable note parsing.")
         return None
     
+    # Load aliases for the prompt
+    aliases = load_aliases()
+    payer_aliases_text = "\n".join([f'- "{k}" → {v}' for k, v in list(aliases["payers"].items())[:30]])
+    med_aliases_text = "\n".join([f'- "{k}" → {v}' for k, v in list(aliases["medications"].items())[:30]])
+    
     states = sorted(db_b['State'].unique().tolist())
     payers = sorted(db_a['Payer Name'].unique().tolist())[:50]
     drug_classes = sorted(db_b['Drug_Class'].unique().tolist())
@@ -855,40 +1013,32 @@ def parse_clinical_note(note_text, db_a, db_b):
                 "role": "user",
                 "content": f"""Extract patient information from this clinical note. Return ONLY a JSON object.
 
-CRITICAL: Look for insurance/payer information carefully. Examples:
-- "Has Independence Blue Cross" → payer: "Independence Blue Cross"
-- "Has Highmark insurance" → payer: "Highmark Blue Cross Blue Shield"
-- "Aetna commercial plan" → payer: "Aetna"
-- "UnitedHealthcare" → payer: "UnitedHealthcare"
+CRITICAL: Look for insurance/payer information carefully. Common abbreviations:
+{payer_aliases_text}
+
+Medication name mappings:
+{med_aliases_text}
 
 JSON format:
 {{
   "state": "two-letter state code (PA, NY, CA, etc) or null",
   "payer": "EXACT insurance company name or null - LOOK FOR THIS CAREFULLY", 
+  "payer_as_written": "exactly how the payer was written in the note (for learning)",
   "drug_class": "medication class from drug list or null",
+  "drug_as_written": "exactly how the medication was written in the note (for learning)",
   "diagnosis": "Chronic Migraine, Episodic Migraine, or Cluster Headache",
   "age": integer age or null,
   "prior_medications": ["medications that failed"],
   "confidence": "high/medium/low"
 }}
 
-Common payers in database:
-{', '.join(payers[:40])}
-
-Valid drug classes:
+Valid drug classes in our database:
 {', '.join(drug_classes)}
-
-Medication name to class mapping:
-- Aimovig, Ajovy, Emgality, erenumab → "CGRP mAbs"
-- Ubrelvy, Nurtec ODT, ubrogepant, rimegepant → "Gepants"
-- Qulipta, atogepant → "Qulipta"
-- Botox, onabotulinumtoxinA → "Botox"
-- Vyepti, eptinezumab → "Vyepti"
 
 Clinical note:
 {note_text}
 
-Return ONLY the JSON object with all fields filled in. If you see ANY mention of insurance or payer, include it in the "payer" field."""
+Return ONLY the JSON object with all fields filled in."""
             }]
         )
         
@@ -897,24 +1047,38 @@ Return ONLY the JSON object with all fields filled in. If you see ANY mention of
         try:
             parsed = json.loads(response_text)
             
+            # Try alias resolution first for payer
             if parsed.get('payer'):
-                payer_input = parsed['payer'].lower().strip()
-                all_payers = db_a['Payer Name'].unique()
-                
-                exact_match = None
-                for p in all_payers:
-                    if p.lower() == payer_input:
-                        exact_match = p
-                        break
-                
-                if not exact_match:
+                # Check if there's an alias match
+                alias_match = resolve_alias(parsed['payer'], 'payers', aliases)
+                if alias_match:
+                    parsed['payer_resolved_from_alias'] = True
+                    parsed['payer'] = alias_match
+                else:
+                    # Fall back to fuzzy matching against database
+                    payer_input = parsed['payer'].lower().strip()
+                    all_payers = db_a['Payer Name'].unique()
+                    
+                    exact_match = None
                     for p in all_payers:
-                        if payer_input in p.lower() or p.lower() in payer_input:
+                        if p.lower() == payer_input:
                             exact_match = p
                             break
-                
-                if exact_match:
-                    parsed['payer'] = exact_match
+                    
+                    if not exact_match:
+                        for p in all_payers:
+                            if payer_input in p.lower() or p.lower() in payer_input:
+                                exact_match = p
+                                break
+                    
+                    if exact_match:
+                        parsed['payer'] = exact_match
+            
+            # Try alias resolution for drug class
+            if parsed.get('drug_as_written'):
+                alias_match = resolve_alias(parsed['drug_as_written'], 'medications', aliases)
+                if alias_match and alias_match in drug_classes:
+                    parsed['drug_class'] = alias_match
             
             return parsed
         except:
@@ -1365,16 +1529,16 @@ elif st.session_state.current_page == 'AI Parser':
     with col1:
         if st.button("📋 Load Example", use_container_width=True):
             example_note = """45-year-old female with chronic migraine, approximately 20 headache days per month for the past 6 months. 
-Lives in Pennsylvania. Has Independence Blue Cross commercial insurance. 
+Lives in Pennsylvania. Has IBX commercial insurance. 
 Previously tried topiramate 100mg daily for 12 weeks - discontinued due to cognitive side effects (word-finding difficulty, concentration problems). 
 Also failed propranolol 80mg BID for 8 weeks - inadequate response with less than 30% reduction in headache frequency.
-Patient is interested in trying Aimovig (erenumab) for migraine prevention.
+Patient is interested in trying Aimovig for migraine prevention.
 No cardiovascular history. BMI 24."""
             st.session_state.clinical_note = example_note
             st.rerun()
     
     with col2:
-        st.caption("👆 Example shows properly de-identified note: age (not DOB), state (not address), no patient name or MRN")
+        st.caption("👆 Example uses 'IBX' - watch the system recognize it as Independence Blue Cross!")
     
     clinical_note = st.text_area(
         "Clinical Note (De-identified)",
@@ -1401,6 +1565,10 @@ No cardiovascular history. BMI 24."""
         
         st.markdown("---")
         st.markdown("### 📊 Extracted Information")
+        
+        # Show if alias was used
+        if parsed.get('payer_resolved_from_alias'):
+            st.success(f"✨ Recognized '{parsed.get('payer_as_written', 'abbreviation')}' as **{parsed.get('payer')}** from learned aliases")
         
         col1, col2, col3 = st.columns(3)
         
@@ -1432,6 +1600,7 @@ No cardiovascular history. BMI 24."""
         # Editable fields
         st.markdown("---")
         st.markdown("### ✏️ Review & Edit")
+        st.caption("💡 **Tip:** When you correct a payer or medication, you can teach the system to remember that abbreviation for next time.")
         
         col1, col2 = st.columns(2)
         
@@ -1452,12 +1621,43 @@ No cardiovascular history. BMI 24."""
             
             edited_payer = st.selectbox("Payer", options=state_payers_edit, index=default_payer_idx)
             
+            # ALIAS LEARNING: Payer
+            original_payer_text = parsed.get('payer_as_written', parsed.get('payer', ''))
+            if edited_payer != 'All Payers' and original_payer_text:
+                # Check if this is a correction (different from what was parsed)
+                if edited_payer.lower() != parsed.get('payer', '').lower():
+                    st.markdown(f"<small style='color: #666;'>Original text: \"{original_payer_text}\"</small>", unsafe_allow_html=True)
+                    
+                    # Offer to learn the alias
+                    learn_payer = st.checkbox(
+                        f"🧠 Teach system: '{original_payer_text}' = '{edited_payer}'",
+                        key="learn_payer_alias",
+                        help="Check this to remember this abbreviation for future notes"
+                    )
+                    if learn_payer:
+                        st.session_state.pending_payer_alias = (original_payer_text, edited_payer)
+            
             drug_classes_edit = sorted(db_b['Drug_Class'].unique().tolist())
             default_drug_idx = 0
             if parsed.get('drug_class') and parsed['drug_class'] in drug_classes_edit:
                 default_drug_idx = drug_classes_edit.index(parsed['drug_class'])
             
             edited_drug = st.selectbox("Drug Class", options=drug_classes_edit, index=default_drug_idx)
+            
+            # ALIAS LEARNING: Medication
+            original_drug_text = parsed.get('drug_as_written', '')
+            if original_drug_text and edited_drug:
+                # Check if this mapping isn't already known
+                aliases = load_aliases()
+                existing_mapping = resolve_alias(original_drug_text, 'medications', aliases)
+                if existing_mapping != edited_drug and original_drug_text.lower() not in [k.lower() for k in aliases['medications'].keys()]:
+                    learn_drug = st.checkbox(
+                        f"🧠 Teach system: '{original_drug_text}' = '{edited_drug}'",
+                        key="learn_drug_alias",
+                        help="Check this to remember this medication name for future notes"
+                    )
+                    if learn_drug:
+                        st.session_state.pending_drug_alias = (original_drug_text, edited_drug)
         
         with col2:
             diagnosis_options = ["Chronic Migraine", "Episodic Migraine", "Cluster Headache"]
@@ -1468,7 +1668,22 @@ No cardiovascular history. BMI 24."""
             edited_diagnosis = st.selectbox("Diagnosis", options=diagnosis_options, index=default_diag_idx)
             edited_age = st.number_input("Age", min_value=1, max_value=120, value=parsed.get('age', 35))
             
-            if st.button("💾 Save Edits"):
+            if st.button("💾 Save Edits", type="primary"):
+                # Save any pending aliases
+                aliases_learned = []
+                
+                if st.session_state.get('pending_payer_alias'):
+                    alias, canonical = st.session_state.pending_payer_alias
+                    save_alias('payers', alias, canonical)
+                    aliases_learned.append(f"'{alias}' → '{canonical}'")
+                    del st.session_state.pending_payer_alias
+                
+                if st.session_state.get('pending_drug_alias'):
+                    alias, canonical = st.session_state.pending_drug_alias
+                    save_alias('medications', alias, canonical)
+                    aliases_learned.append(f"'{alias}' → '{canonical}'")
+                    del st.session_state.pending_drug_alias
+                
                 st.session_state.parsed_data.update({
                     'state': edited_state,
                     'payer': edited_payer,
@@ -1476,8 +1691,56 @@ No cardiovascular history. BMI 24."""
                     'diagnosis': edited_diagnosis,
                     'age': edited_age
                 })
-                st.success("✅ Edits saved!")
+                
+                if aliases_learned:
+                    st.success(f"✅ Edits saved! Also learned: {', '.join(aliases_learned)}")
+                    st.balloons()
+                else:
+                    st.success("✅ Edits saved!")
                 st.rerun()
+        
+        # Show learned aliases (collapsible)
+        with st.expander("🧠 View Learned Aliases", expanded=False):
+            aliases = load_aliases()
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("**Payer Aliases:**")
+                # Show custom learned ones first (from file), then defaults
+                if os.path.exists(ALIAS_FILE):
+                    try:
+                        with open(ALIAS_FILE, 'r') as f:
+                            learned = json.load(f)
+                            if learned.get('payers'):
+                                st.markdown("*Learned from your corrections:*")
+                                for alias, canonical in learned['payers'].items():
+                                    st.markdown(f"• `{alias}` → {canonical}")
+                    except:
+                        pass
+                
+                st.markdown("*Built-in:*")
+                for alias, canonical in list(DEFAULT_ALIASES['payers'].items())[:10]:
+                    st.markdown(f"• `{alias}` → {canonical}")
+                st.caption(f"...and {len(DEFAULT_ALIASES['payers']) - 10} more")
+            
+            with col2:
+                st.markdown("**Medication Aliases:**")
+                if os.path.exists(ALIAS_FILE):
+                    try:
+                        with open(ALIAS_FILE, 'r') as f:
+                            learned = json.load(f)
+                            if learned.get('medications'):
+                                st.markdown("*Learned from your corrections:*")
+                                for alias, canonical in learned['medications'].items():
+                                    st.markdown(f"• `{alias}` → {canonical}")
+                    except:
+                        pass
+                
+                st.markdown("*Built-in:*")
+                for alias, canonical in list(DEFAULT_ALIASES['medications'].items())[:10]:
+                    st.markdown(f"• `{alias}` → {canonical}")
+                st.caption(f"...and {len(DEFAULT_ALIASES['medications']) - 10} more")
         
         if st.button("🔎 Search with Extracted Data", type="primary", use_container_width=True):
             query = db_b[db_b['State'] == parsed['state']]
