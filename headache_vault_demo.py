@@ -5,7 +5,7 @@ from datetime import datetime
 # Page configuration
 st.set_page_config(
     page_title="The Headache Vault - PA Automation Demo",
-    page_icon="💊",  # Medical/pill icon instead of brain
+    page_icon="💊",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -46,14 +46,14 @@ st.markdown("""
     
     .main-header {
         font-size: 2.5rem;
-        color: #4B0082;  /* Regulatory Purple */
+        color: #4B0082;
         font-weight: 700;
         margin-bottom: 0.5rem;
         font-family: 'Inter', sans-serif;
     }
     .sub-header {
         font-size: 1.2rem;
-        color: #5A5A5A;  /* Readable gray */
+        color: #5A5A5A;
         margin-bottom: 2rem;
         font-family: 'Source Sans Pro', sans-serif;
     }
@@ -61,45 +61,45 @@ st.markdown("""
         background-color: #f0f2f6;
         padding: 1rem;
         border-radius: 8px;
-        border-left: 4px solid #4B0082;  /* Regulatory Purple */
+        border-left: 4px solid #4B0082;
         margin: 1rem 0;
         color: #262730;
     }
     .warning-box {
-        background-color: #FFF9E6;  /* Lighter yellow for warnings */
+        background-color: #FFF9E6;
         padding: 1rem;
         border-radius: 8px;
-        border-left: 4px solid #FFD700;  /* Gold Card Yellow */
+        border-left: 4px solid #FFD700;
         margin: 1rem 0;
         color: #856404;
     }
     .success-box {
-        background-color: #F5F0FF;  /* Lavender tint */
+        background-color: #F5F0FF;
         padding: 1rem;
         border-radius: 8px;
-        border-left: 4px solid #FFD700;  /* Gold Card Yellow for Gold Card status */
+        border-left: 4px solid #FFD700;
         margin: 1rem 0;
-        color: #262730;  /* Dark text for readability */
+        color: #262730;
     }
     .evidence-tag {
         display: inline-block;
-        background-color: #E6E6FA;  /* Compassion Lavender */
+        background-color: #E6E6FA;
         padding: 0.25rem 0.75rem;
         border-radius: 12px;
         font-size: 0.85rem;
         margin: 0.25rem;
-        color: #262730;  /* Dark text for readability */
+        color: #262730;
         font-weight: 600;
     }
     
-    /* Update primary button colors */
+    /* Primary button colors */
     .stButton > button[kind="primary"] {
-        background-color: #4B0082 !important;  /* Regulatory Purple */
+        background-color: #4B0082 !important;
         color: white !important;
     }
     
     .stButton > button[kind="primary"]:hover {
-        background-color: #6A0DAD !important;  /* Lighter purple on hover */
+        background-color: #6A0DAD !important;
     }
     
     /* Secondary buttons */
@@ -110,16 +110,16 @@ st.markdown("""
     }
     
     .stButton > button[kind="secondary"]:hover {
-        background-color: #F5F0FF !important;  /* Light purple tint on hover */
+        background-color: #F5F0FF !important;
         color: #4B0082 !important;
     }
     
     /* Regular buttons */
     .stButton > button {
-        color: #262730 !important;  /* Dark text for visibility */
+        color: #262730 !important;
     }
     
-    /* Production Features - Dashboard Stats */
+    /* Dashboard Stats */
     .stat-card {
         background: linear-gradient(135deg, #4B0082 0%, #6A0DAD 100%);
         padding: 1.5rem;
@@ -195,13 +195,13 @@ st.markdown("""
         background: #FAFAFA;
         border-radius: 8px;
         margin: 0.5rem 0;
-        color: #262730;  /* Ensure dark text on light background */
+        color: #262730;
     }
     .step-item strong {
-        color: #262730;  /* Dark text for medication names */
+        color: #262730;
     }
     .step-item small {
-        color: #708090;  /* Slate gray for durations */
+        color: #708090;
     }
     .step-number {
         background: #4B0082;
@@ -219,12 +219,86 @@ st.markdown("""
     }
     .gold-card-badge {
         background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
-        color: #000;  /* Black text on gold - high contrast */
+        color: #000;
         padding: 0.5rem 1rem;
         border-radius: 8px;
         font-weight: 700;
         display: inline-block;
         margin: 0.5rem 0;
+    }
+    
+    /* PCP Guidance Box - NEW */
+    .pcp-guidance-box {
+        background: #F0F7FF;
+        border: 1px solid #B3D4FC;
+        border-radius: 8px;
+        padding: 1rem;
+        margin: 0.75rem 0;
+    }
+    .pcp-guidance-header {
+        color: #1E40AF;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+    .pcp-guidance-item {
+        color: #374151;
+        font-size: 0.9rem;
+        line-height: 1.6;
+        margin: 0.25rem 0;
+    }
+    
+    /* Pitfall Warning Box - NEW */
+    .pitfall-box {
+        background: #FEF3C7;
+        border: 1px solid #F59E0B;
+        border-left: 4px solid #F59E0B;
+        border-radius: 8px;
+        padding: 1rem;
+        margin: 0.75rem 0;
+    }
+    .pitfall-header {
+        color: #92400E;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+    .pitfall-text {
+        color: #78350F;
+        font-size: 0.9rem;
+        line-height: 1.5;
+    }
+    
+    /* PA Template Styling - NEW */
+    .pa-template {
+        background: #FAFAFA;
+        border: 2px solid #E5E7EB;
+        border-radius: 12px;
+        padding: 1.5rem;
+        font-family: 'Courier New', monospace;
+        font-size: 0.9rem;
+        line-height: 1.8;
+    }
+    .pa-template-section {
+        margin: 1rem 0;
+        padding: 0.75rem;
+        background: white;
+        border-radius: 8px;
+        border-left: 3px solid #4B0082;
+    }
+    .pa-template-label {
+        color: #4B0082;
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: 0.8rem;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.5rem;
+    }
+    .pa-blank {
+        background: #FEF3C7;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        border-bottom: 2px dashed #F59E0B;
+        color: #92400E;
+        font-style: italic;
     }
     
     /* Copy Button Styling */
@@ -246,24 +320,6 @@ st.markdown("""
         transform: translateY(-1px);
     }
     
-    /* Success Toast */
-    .success-toast {
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: #10B981;
-        color: white;
-        padding: 1rem 1.5rem;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        z-index: 9999;
-        animation: slideIn 0.3s ease;
-    }
-    @keyframes slideIn {
-        from { transform: translateX(400px); opacity: 0; }
-        to { transform: translateX(0); opacity: 1; }
-    }
-    
     /* Production Footer */
     .production-footer {
         margin-top: 3rem;
@@ -279,34 +335,14 @@ st.markdown("""
         color: #4B0082;
     }
     
-    /* Dashboard Quick Actions */
-    .quick-action-btn {
-        background: white;
-        border: 2px solid #4B0082;
-        padding: 1.5rem;
-        border-radius: 12px;
-        text-align: center;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        color: #4B0082;
-        font-weight: 600;
-    }
-    .quick-action-btn:hover {
-        background: #4B0082;
-        color: white;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(75, 0, 130, 0.2);
-    }
-    
     /* Sidebar styling */
     section[data-testid="stSidebar"] {
-        background-color: #FAFAFA !important;  /* Light gray */
+        background-color: #FAFAFA !important;
     }
     
-    /* Fix sidebar form elements - dropdowns, radio buttons, etc. */
     section[data-testid="stSidebar"] .stSelectbox > div > div {
-        background-color: #FFFFFF !important;  /* White background for dropdowns */
-        color: #262730 !important;  /* Dark text */
+        background-color: #FFFFFF !important;
+        color: #262730 !important;
     }
     
     section[data-testid="stSidebar"] input {
@@ -323,7 +359,6 @@ st.markdown("""
         color: #262730 !important;
     }
     
-    /* Dropdown menu items */
     [data-baseweb="popover"] {
         background-color: #FFFFFF !important;
     }
@@ -337,7 +372,6 @@ st.markdown("""
         background-color: #F0F0F0 !important;
     }
     
-    /* Radio buttons */
     section[data-testid="stSidebar"] [data-testid="stRadio"] label {
         color: #262730 !important;
     }
@@ -346,34 +380,29 @@ st.markdown("""
         color: #262730 !important;
     }
     
-    /* Number input */
     section[data-testid="stSidebar"] input[type="number"] {
         background-color: #FFFFFF !important;
         color: #262730 !important;
     }
     
-    /* All sidebar labels */
     section[data-testid="stSidebar"] label {
         color: #262730 !important;
         font-weight: 600 !important;
     }
     
-    /* Sidebar header */
     section[data-testid="stSidebar"] h2 {
         color: #262730 !important;
     }
     
-    /* Metrics styling */
     [data-testid="stMetricValue"] {
-        color: #262730;  /* Dark readable text for metric values */
+        color: #262730;
         font-weight: 700;
     }
     
     [data-testid="stMetricLabel"] {
-        color: #5A5A5A;  /* Gray for metric labels */
+        color: #5A5A5A;
     }
     
-    /* Tab styling */
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
     }
@@ -381,17 +410,16 @@ st.markdown("""
     .stTabs [data-baseweb="tab"] {
         font-family: 'Inter', sans-serif;
         font-weight: 600;
-        color: #5A5A5A;  /* Readable gray for inactive tabs */
+        color: #5A5A5A;
         background-color: transparent !important;
     }
     
     .stTabs [aria-selected="true"] {
-        color: #262730 !important;  /* Dark text for active tab */
-        border-bottom-color: #4B0082 !important;  /* Purple underline for active */
+        color: #262730 !important;
+        border-bottom-color: #4B0082 !important;
         background-color: transparent !important;
     }
     
-    /* General form elements in main area */
     .stSelectbox > div > div,
     .stTextInput > div > div,
     .stTextArea > div > div {
@@ -404,18 +432,15 @@ st.markdown("""
         color: #262730 !important;
     }
     
-    /* Expander styling */
     .streamlit-expanderHeader {
         background-color: #F8F9FA !important;
         color: #262730 !important;
     }
     
-    /* Info boxes, warnings, etc */
     .stAlert {
         background-color: #F8F9FA !important;
     }
     
-    /* Ensure text in info/success/warning/error boxes is visible */
     .stAlert [data-testid="stMarkdownContainer"] {
         color: #262730 !important;
     }
@@ -424,16 +449,11 @@ st.markdown("""
         color: #262730 !important;
     }
     
-    /* Caption text visibility */
     .stCaption {
-        color: #708090 !important;  /* Slate gray - readable on white */
+        color: #708090 !important;
     }
     
-    /* ===================================================================== */
-    /* NUCLEAR OPTION - FORCE ALL TEXT VISIBLE */
-    /* ===================================================================== */
-    
-    /* Force all text elements to be dark EXCEPT primary buttons */
+    /* Force all text visible */
     p:not(.stButton [kind="primary"] *), 
     span:not(.stButton [kind="primary"] *), 
     div:not(.stButton [kind="primary"] *), 
@@ -441,7 +461,6 @@ st.markdown("""
         color: #262730 !important;
     }
     
-    /* PRIMARY BUTTONS - Keep white text */
     .stButton > button[kind="primary"],
     .stButton > button[kind="primary"] *,
     button[kind="primary"] span,
@@ -450,8 +469,6 @@ st.markdown("""
         color: white !important;
     }
     
-    /* Except for elements with specific styling */
-    /* STAT CARDS - Force white text on purple background */
     .stat-card,
     .stat-card *,
     .stat-card div,
@@ -460,12 +477,10 @@ st.markdown("""
         color: white !important;
     }
     
-    /* Other exceptions */
     .step-number * {
         color: white !important;
     }
     
-    /* Force selectbox and dropdown text */
     [data-baseweb="select"] span,
     [data-baseweb="select"] div,
     [role="listbox"] *,
@@ -473,18 +488,15 @@ st.markdown("""
         color: #262730 !important;
     }
     
-    /* Force all button text except primary purple buttons */
     button:not([kind="primary"]) * {
         color: #4B0082 !important;
     }
     
-    /* Force dataframe text */
     .dataframe, .dataframe *, table, table * {
         color: #262730 !important;
         background-color: #FFFFFF !important;
     }
     
-    /* Force markdown container text */
     [data-testid="stMarkdownContainer"],
     [data-testid="stMarkdownContainer"] *,
     [data-testid="stMarkdownContainer"] p,
@@ -493,13 +505,11 @@ st.markdown("""
         color: #262730 !important;
     }
     
-    /* Force all text areas and inputs */
     textarea, input, select {
         color: #262730 !important;
         background-color: #FFFFFF !important;
     }
     
-    /* Force code blocks */
     code, pre, .stCode {
         color: #262730 !important;
         background-color: #F8F9FA !important;
@@ -534,28 +544,287 @@ if 'current_page' not in st.session_state:
     st.session_state.current_page = 'Dashboard'
 if 'show_success' not in st.session_state:
     st.session_state.show_success = False
+if 'selected_policy_idx' not in st.session_state:
+    st.session_state.selected_policy_idx = None
 
 # Load data
 db_a, db_b, db_c, db_e, db_f, icd10, therapeutic, otc = load_databases()
 
-# Helper function to create copy button HTML
-def create_copy_button(text, button_id):
-    """Create a copy-to-clipboard button"""
-    escaped_text = text.replace("'", "\\'").replace("\n", "\\n")
-    return f"""
-    <button onclick="navigator.clipboard.writeText('{escaped_text}').then(() => {{
-        const btn = document.getElementById('{button_id}');
-        const original = btn.innerHTML;
-        btn.innerHTML = '✅ Copied!';
-        btn.style.background = '#10B981';
-        setTimeout(() => {{
-            btn.innerHTML = original;
-            btn.style.background = '#4B0082';
-        }}, 2000);
-    }})" id="{button_id}" class="copy-button">
-        📋 Copy
-    </button>
-    """
+# ============================================================================
+# HELPER FUNCTIONS FOR PCP GUIDANCE (NEW)
+# ============================================================================
+
+def get_pcp_guidance(drug_class, step_therapy_required, step_requirements, duration):
+    """Generate context-specific PCP guidance based on policy details"""
+    
+    guidance = {
+        'what_to_document': [],
+        'common_denials': [],
+        'pro_tips': []
+    }
+    
+    # Universal documentation requirements
+    guidance['what_to_document'] = [
+        "Headache frequency: Document exact days per month (e.g., '18 headache days/month for past 3 months')",
+        "Functional impact: Specific examples (e.g., 'Missed 6 workdays in past month due to migraines')",
+        "Prior treatments: List each medication with dose, duration, and specific outcome"
+    ]
+    
+    # Drug-class specific guidance
+    if 'CGRP' in drug_class or 'mAb' in drug_class:
+        guidance['what_to_document'].append(
+            "For CGRP mAbs: Document that patient meets chronic migraine criteria (≥15 headache days/month, ≥8 with migraine features)"
+        )
+        guidance['common_denials'].append(
+            "Missing chronic migraine diagnosis - must document ≥15 headache days/month for ≥3 months"
+        )
+        guidance['pro_tips'].append(
+            "CGRP mAbs have the strongest evidence for patients who failed 2+ preventives. Lead with this in your letter."
+        )
+    
+    if 'Botox' in drug_class:
+        guidance['what_to_document'].append(
+            "For Botox: Chronic migraine diagnosis is REQUIRED (≥15 days/month). Episodic migraine is NOT an approved indication."
+        )
+        guidance['common_denials'].append(
+            "Episodic migraine diagnosis - Botox is only FDA-approved for chronic migraine"
+        )
+        guidance['pro_tips'].append(
+            "Document exact injection protocol planned (155-195 units across 31-39 sites per AHS guidelines)"
+        )
+    
+    if 'Gepant' in drug_class or 'gepant' in drug_class:
+        guidance['what_to_document'].append(
+            "For Gepants: Document whether using for acute treatment OR prevention - different PA requirements"
+        )
+        guidance['pro_tips'].append(
+            "Gepants can be used for both acute and preventive treatment. Specify clearly which indication you're requesting."
+        )
+    
+    # Step therapy specific guidance
+    if step_therapy_required == 'Yes':
+        guidance['common_denials'].append(
+            "Insufficient trial duration - document EXACT dates, not just 'adequate trial'"
+        )
+        guidance['common_denials'].append(
+            "Vague failure language - specify 'failed due to [side effect/lack of efficacy]' with details"
+        )
+        
+        # Parse duration if available
+        if duration and 'day' in str(duration).lower():
+            guidance['pro_tips'].append(
+                f"This payer requires specific duration. Copy this exact language: '{duration}'"
+            )
+    
+    return guidance
+
+
+def get_common_pitfalls(row):
+    """Generate context-specific pitfall warnings based on policy details"""
+    
+    pitfalls = []
+    
+    # Duration-specific pitfall
+    duration = str(row.get('Step_1_Duration', ''))
+    if duration and duration != 'nan' and 'Not specified' not in duration:
+        pitfalls.append({
+            'title': '⚠️ Duration Documentation Critical',
+            'text': f'This payer requires "{duration}". Many denials occur when documentation says "adequate trial" without specifying exact dates. Document: "Completed {duration} from [START DATE] to [END DATE]"'
+        })
+    
+    # Step therapy pitfall
+    if row.get('Step_Therapy_Required') == 'Yes':
+        step_req = str(row.get('Step_1_Requirement', ''))
+        if step_req and step_req != 'nan':
+            pitfalls.append({
+                'title': '⚠️ Step Therapy Sequence Matters',
+                'text': f'Document trials in order. This payer requires: {step_req}. List each medication separately with specific dose, dates, and outcome.'
+            })
+    
+    # Gold Card pitfall
+    if row.get('Gold_Card_Available') == 'Yes':
+        pitfalls.append({
+            'title': '💡 Gold Card Opportunity',
+            'text': 'This payer offers Gold Card status after successful PAs. Track your approvals - you may qualify for auto-approval on future requests.'
+        })
+    
+    # Drug class specific pitfalls
+    drug_class = str(row.get('Drug_Class', ''))
+    if 'CGRP' in drug_class:
+        pitfalls.append({
+            'title': '⚠️ CGRP-Specific: Cardiovascular History',
+            'text': 'Some payers require documentation that patient has no uncontrolled cardiovascular disease. Include cardiac history in your clinical justification.'
+        })
+    
+    if 'Botox' in drug_class:
+        pitfalls.append({
+            'title': '⚠️ Botox: Chronic Migraine Only',
+            'text': 'Botox is ONLY approved for chronic migraine (≥15 days/month). If documenting episodic migraine, the PA will be denied regardless of other criteria.'
+        })
+    
+    return pitfalls
+
+
+def generate_pa_template(row, diagnosis, age):
+    """Generate a fill-in-the-blank PA template based on policy requirements"""
+    
+    drug_class = row.get('Drug_Class', 'Requested Medication')
+    payer = row.get('Payer_Name', 'Payer')
+    state = row.get('State', 'State')
+    lob = row.get('LOB', 'Commercial')
+    step_required = row.get('Step_Therapy_Required', 'No')
+    step_1_req = row.get('Step_1_Requirement', '')
+    step_1_duration = row.get('Step_1_Duration', '')
+    
+    # Build the template
+    template = f"""═══════════════════════════════════════════════════════════════════
+                    PRIOR AUTHORIZATION REQUEST
+                         {drug_class}
+═══════════════════════════════════════════════════════════════════
+Generated: {datetime.now().strftime('%B %d, %Y')}
+Payer: {payer} | State: {state} | LOB: {lob}
+═══════════════════════════════════════════════════════════════════
+
+SECTION 1: PATIENT INFORMATION
+───────────────────────────────────────────────────────────────────
+Patient Name:      [_______________________________]
+Date of Birth:     [___/___/______]  Age: {age} years
+Member ID:         [_______________________________]
+Group Number:      [_______________________________]
+
+SECTION 2: DIAGNOSIS
+───────────────────────────────────────────────────────────────────
+Primary Diagnosis: {diagnosis}
+ICD-10 Code:       [________] (e.g., G43.709 for Chronic Migraine)
+
+Headache Frequency:
+  ☐ Episodic (<15 days/month)
+  ☐ Chronic (≥15 days/month for ≥3 months)
+  
+  Exact frequency: [____] headache days per month
+  Duration of pattern: [____] months
+
+SECTION 3: CLINICAL PRESENTATION
+───────────────────────────────────────────────────────────────────
+Headache Characteristics (check all that apply):
+  ☐ Pulsating quality
+  ☐ Moderate to severe intensity
+  ☐ Unilateral location
+  ☐ Aggravated by routine physical activity
+  ☐ Nausea/vomiting
+  ☐ Photophobia/phonophobia
+  ☐ Aura present
+
+Functional Impact:
+  Work/school days missed in past month: [____]
+  Activities limited: [_________________________________]
+  MIDAS Score (if available): [____]
+  HIT-6 Score (if available): [____]
+
+"""
+    
+    # Add step therapy section if required
+    if step_required == 'Yes':
+        template += f"""SECTION 4: PRIOR TREATMENT HISTORY (STEP THERAPY DOCUMENTATION)
+───────────────────────────────────────────────────────────────────
+⚠️ REQUIRED: {step_1_req if step_1_req and str(step_1_req) != 'nan' else 'Prior preventive trial required'}
+⚠️ DURATION: {step_1_duration if step_1_duration and str(step_1_duration) != 'nan' else 'Per payer policy'}
+
+MEDICATION 1:
+  Drug Name:        [_______________________________]
+  Dose:             [________] mg  Frequency: [__________]
+  Start Date:       [___/___/______]
+  End Date:         [___/___/______]
+  Duration:         [____] days/weeks
+  Outcome:          ☐ Ineffective  ☐ Intolerable side effects  ☐ Contraindicated
+  Specific reason for discontinuation:
+  [________________________________________________________________]
+
+MEDICATION 2:
+  Drug Name:        [_______________________________]
+  Dose:             [________] mg  Frequency: [__________]
+  Start Date:       [___/___/______]
+  End Date:         [___/___/______]
+  Duration:         [____] days/weeks
+  Outcome:          ☐ Ineffective  ☐ Intolerable side effects  ☐ Contraindicated
+  Specific reason for discontinuation:
+  [________________________________________________________________]
+
+"""
+    else:
+        template += """SECTION 4: PRIOR TREATMENT HISTORY
+───────────────────────────────────────────────────────────────────
+Note: No formal step therapy required by this payer, but documenting
+prior treatments strengthens your request.
+
+Previous preventive medications tried (if any):
+  [________________________________________________________________]
+  [________________________________________________________________]
+
+"""
+    
+    template += f"""SECTION 5: REQUESTED MEDICATION
+───────────────────────────────────────────────────────────────────
+Medication:        {drug_class}
+Specific Drug:     [_______________________________]
+Dose Requested:    [________] mg
+Frequency:         [__________]
+Quantity:          [____] per month
+Duration:          [____] months initially
+
+SECTION 6: CLINICAL RATIONALE
+───────────────────────────────────────────────────────────────────
+[Customize this section based on your patient's specific situation]
+
+This patient meets diagnostic criteria for {diagnosis} per ICHD-3 
+classification. """
+    
+    if step_required == 'Yes':
+        template += f"""Patient has completed required step therapy per 
+{payer} policy with inadequate response as documented above.
+
+"""
+    
+    template += f"""{drug_class} therapy is indicated per American Headache Society 
+guidelines for migraine prevention in patients who have failed prior 
+preventive therapies.
+
+Additional clinical rationale:
+[________________________________________________________________]
+[________________________________________________________________]
+[________________________________________________________________]
+
+SECTION 7: PRESCRIBER INFORMATION
+───────────────────────────────────────────────────────────────────
+Prescriber Name:   [_______________________________]
+Specialty:         [_______________________________]
+NPI:               [_______________________________]
+Phone:             [_______________________________]
+Fax:               [_______________________________]
+
+SECTION 8: REFERENCES
+───────────────────────────────────────────────────────────────────
+☐ American Headache Society Consensus Statement (2021)
+☐ American Headache Society Position Statement on CGRP mAbs (2024)
+☐ American College of Physicians Migraine Guidelines (2025)
+☐ ICHD-3 Diagnostic Criteria
+☐ FDA Prescribing Information for {drug_class}
+
+═══════════════════════════════════════════════════════════════════
+                    ATTESTATION
+═══════════════════════════════════════════════════════════════════
+I certify that the above information is accurate and complete.
+
+Prescriber Signature: _________________________ Date: ___________
+
+═══════════════════════════════════════════════════════════════════
+         Generated by The Headache Vault PA Engine
+              www.headachevault.com | v1.0
+═══════════════════════════════════════════════════════════════════
+"""
+    
+    return template
+
 
 # Clinical note parser
 def parse_clinical_note(note_text, db_a, db_b):
@@ -563,7 +832,6 @@ def parse_clinical_note(note_text, db_a, db_b):
     import anthropic
     import json
     
-    # Get API key from secrets (for deployed app) or environment
     try:
         api_key = st.secrets.get("ANTHROPIC_API_KEY", None)
     except:
@@ -573,9 +841,8 @@ def parse_clinical_note(note_text, db_a, db_b):
         st.error("⚠️ Anthropic API key not configured. Add it to Streamlit secrets to enable note parsing.")
         return None
     
-    # Get valid options from databases
     states = sorted(db_b['State'].unique().tolist())
-    payers = sorted(db_a['Payer Name'].unique().tolist())[:50]  # Top 50 for context
+    payers = sorted(db_a['Payer Name'].unique().tolist())[:50]
     drug_classes = sorted(db_b['Drug_Class'].unique().tolist())
     
     try:
@@ -625,40 +892,32 @@ Return ONLY the JSON object with all fields filled in. If you see ANY mention of
             }]
         )
         
-        # Extract JSON from response
         response_text = message.content[0].text
         
-        # Try to parse JSON
         try:
             parsed = json.loads(response_text)
             
-            # Validate and fuzzy-match payer name
             if parsed.get('payer'):
                 payer_input = parsed['payer'].lower().strip()
                 all_payers = db_a['Payer Name'].unique()
                 
-                # Try exact match first (case insensitive)
                 exact_match = None
                 for p in all_payers:
                     if p.lower() == payer_input:
                         exact_match = p
                         break
                 
-                # If no exact match, try partial matching
                 if not exact_match:
                     for p in all_payers:
-                        # Check if input is contained in database name or vice versa
                         if payer_input in p.lower() or p.lower() in payer_input:
                             exact_match = p
                             break
                 
-                # Update with matched name
                 if exact_match:
                     parsed['payer'] = exact_match
             
             return parsed
         except:
-            # If not valid JSON, try to extract it
             import re
             json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
             if json_match:
@@ -672,7 +931,10 @@ Return ONLY the JSON object with all fields filled in. If you see ANY mention of
         st.error(f"API Error: {str(e)}")
         return None
 
-# Header with Production Navigation
+
+# ============================================================================
+# HEADER
+# ============================================================================
 st.markdown("""
 <div style="text-align: left; margin-bottom: 1rem;">
     <div class="main-header">The Headache Vault</div>
@@ -744,7 +1006,7 @@ if st.session_state.current_page == 'Dashboard':
     st.markdown("<br>", unsafe_allow_html=True)
     
     # What's New Banner
-    st.info("🎉 **What's New:** AI Clinical Note Parsing now available! Parse unstructured notes in seconds.")
+    st.info("🎉 **What's New:** PCP Guidance Mode now available! Collapsible guidance sections help primary care doctors navigate headache PAs.")
     
     # Quick Actions
     st.markdown("### ⚡ Quick Actions")
@@ -768,7 +1030,7 @@ if st.session_state.current_page == 'Dashboard':
             st.session_state.current_page = 'Search'
             st.session_state.show_pa_text = True
             st.rerun()
-        st.caption("Auto-generate prior authorization text")
+        st.caption("Auto-generate prior authorization templates")
     
     # System Status
     st.markdown("<br>", unsafe_allow_html=True)
@@ -793,7 +1055,7 @@ if st.session_state.current_page == 'Dashboard':
         **Core Capabilities:**
         - ⚡ 2-second PA policy lookups
         - 🤖 AI-powered clinical note parsing  
-        - 📋 One-click appeal templates
+        - 📋 Fill-in-the-blank PA templates
         - 🏆 Gold Card status tracking
         - 📊 Step therapy requirements
         - 🔍 ICD-10 code lookup
@@ -807,7 +1069,7 @@ if st.session_state.current_page == 'Dashboard':
         - ✅ ICHD-3 Diagnostic Criteria
         - ✅ MOH Risk Screening
         - ✅ Pediatric Age Checks
-        - ✅ State Regulatory Framework
+        - ✅ PCP Guidance Mode (NEW!)
         """)
 
 # ============================================================================
@@ -820,9 +1082,6 @@ elif st.session_state.current_page == 'Search':
     
     st.markdown("<br>", unsafe_allow_html=True)
     
-    # ============================================================================
-    # SIDEBAR FILTERS
-    # ============================================================================
     # Sidebar filters
     st.sidebar.header("🔍 Search Filters")
 
@@ -841,7 +1100,7 @@ elif st.session_state.current_page == 'Search':
         options=['All Payers'] + sorted(state_payers)
     )
 
-    # Drug class selection - filtered by state
+    # Drug class selection
     state_drug_classes = sorted(db_b[db_b['State'] == selected_state]['Drug_Class'].unique().tolist())
     selected_drug = st.sidebar.selectbox(
         "Medication Class",
@@ -856,7 +1115,7 @@ elif st.session_state.current_page == 'Search':
         help="Select the primary diagnosis"
     )
 
-    # Patient age (for pediatric overrides)
+    # Patient age
     patient_age = st.sidebar.number_input(
         "Patient Age (years)",
         min_value=1,
@@ -865,10 +1124,9 @@ elif st.session_state.current_page == 'Search':
         help="Used to check pediatric prescribing restrictions"
     )
 
-    # Search button
     st.sidebar.markdown("---")
 
-    # Show quick stats
+    # Quick stats
     total_in_state = len(db_b[db_b['State'] == selected_state])
     st.sidebar.markdown(f"""
 <div style='background-color: white; padding: 0.75rem; border-radius: 8px; border-left: 4px solid #4B0082; margin: 0.5rem 0;'>
@@ -876,7 +1134,6 @@ elif st.session_state.current_page == 'Search':
 </div>
 """, unsafe_allow_html=True)
 
-    # Database coverage note
     st.sidebar.markdown("""
 <div style='color: #5A5A5A; font-size: 0.85rem; margin-top: 0.5rem; font-style: italic;'>
     💡 Database: 752 policies across 50 states. Preventive gepant coverage expanding weekly.
@@ -885,10 +1142,9 @@ elif st.session_state.current_page == 'Search':
 
     search_clicked = st.sidebar.button("🔎 Search Policies", type="primary", use_container_width=True)
 
-    # Main content area - show results from either search method
+    # Main content area
     if (search_clicked or st.session_state.search_results is not None) or st.session_state.get('show_results', False):
         if search_clicked:
-            # Perform search from sidebar
             query = db_b[db_b['State'] == selected_state]
             
             if selected_payer != 'All Payers':
@@ -896,12 +1152,11 @@ elif st.session_state.current_page == 'Search':
             
             query = query[query['Drug_Class'] == selected_drug]
             
-            # Filter by headache type
             if headache_type == "Cluster Headache":
                 query = query[query['Drug_Class'].str.contains('Cluster', case=False, na=False)]
             elif headache_type == "Chronic Migraine":
                 query = query[query['Medication_Category'].str.contains('Chronic|Preventive', case=False, na=False)]
-            else:  # Episodic
+            else:
                 query = query[~query['Medication_Category'].str.contains('Chronic', case=False, na=False)]
             
             st.session_state.search_results = query
@@ -935,9 +1190,11 @@ elif st.session_state.current_page == 'Search':
                 requires_step = (results['Step_Therapy_Required'] == 'Yes').sum()
                 st.metric("Require Step Therapy", f"{requires_step}/{len(results)}")
             
-            # Display each policy as a professional card
+            # ================================================================
+            # DISPLAY EACH POLICY WITH PCP GUIDANCE (ENHANCED)
+            # ================================================================
             for idx, row in results.iterrows():
-                # Build policy card with container
+                # Build policy card
                 st.markdown(f"""
                 <div class="policy-card">
                     <div class="policy-header">
@@ -949,18 +1206,12 @@ elif st.session_state.current_page == 'Search':
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Step Therapy Section - use native Streamlit
+                # Step Therapy Section
                 if row['Step_Therapy_Required'] == 'Yes':
                     st.markdown('<div class="policy-section"><div class="policy-section-title">Step Therapy Required</div>', unsafe_allow_html=True)
                     
                     step_therapies = str(row.get('Step_Therapy_Requirements', 'Not specified')).split(';')
                     durations = str(row.get('Step_Therapy_Duration', 'Trial duration not specified')).split(';')
-                    
-                    # Check if details are missing
-                    has_missing_info = (
-                        'Not specified' in str(row.get('Step_Therapy_Requirements', '')) or
-                        'Trial duration not specified' in str(row.get('Step_Therapy_Duration', ''))
-                    )
                     
                     for i, (therapy, duration) in enumerate(zip(step_therapies, durations if len(durations) == len(step_therapies) else ['Trial required'] * len(step_therapies)), 1):
                         st.markdown(f"""
@@ -973,22 +1224,20 @@ elif st.session_state.current_page == 'Search':
                         </div>
                         """, unsafe_allow_html=True)
                     
-                    # Add guidance if details are missing
-                    if has_missing_info:
-                        st.markdown("""
-                        <div style="background: #FFF9E6; padding: 1rem; border-radius: 8px; border-left: 4px solid #FFD700; margin-top: 0.75rem;">
-                            <strong style="color: #B8860B;">💡 Missing Details? Contact the Payer</strong><br>
-                            <small style="color: #666; line-height: 1.6;">
-                            When step therapy requirements aren't specified in our database:<br>
-                            • Call the payer's PA department for specific requirements<br>
-                            • Ask about trial duration, dosing, and failure criteria<br>
-                            • Request their clinical policy bulletin (CPB) number<br>
-                            • Document the conversation in your PA submission
-                            </small>
+                    st.markdown("</div>", unsafe_allow_html=True)
+                    
+                    # ========================================================
+                    # COMMON PITFALL WARNINGS (NEW - Phase 1)
+                    # ========================================================
+                    pitfalls = get_common_pitfalls(row)
+                    for pitfall in pitfalls[:2]:  # Show max 2 pitfalls per policy
+                        st.markdown(f"""
+                        <div class="pitfall-box">
+                            <div class="pitfall-header">{pitfall['title']}</div>
+                            <div class="pitfall-text">{pitfall['text']}</div>
                         </div>
                         """, unsafe_allow_html=True)
                     
-                    st.markdown("</div>", unsafe_allow_html=True)
                 else:
                     st.markdown("""
                     <div class="policy-section">
@@ -1013,19 +1262,67 @@ elif st.session_state.current_page == 'Search':
                     </div>
                     """, unsafe_allow_html=True)
                 
-                # Action buttons below the card
+                # ============================================================
+                # COLLAPSIBLE PCP GUIDANCE SECTION (NEW - Phase 1)
+                # ============================================================
+                with st.expander("📘 New to headache PAs? Click for guidance", expanded=False):
+                    
+                    guidance = get_pcp_guidance(
+                        row.get('Drug_Class', ''),
+                        row.get('Step_Therapy_Required', 'No'),
+                        row.get('Step_Therapy_Requirements', ''),
+                        row.get('Step_1_Duration', '')
+                    )
+                    
+                    st.markdown("#### ✅ What to Document")
+                    for item in guidance['what_to_document']:
+                        st.markdown(f"• {item}")
+                    
+                    if guidance['common_denials']:
+                        st.markdown("#### ⚠️ Common Denial Reasons")
+                        for item in guidance['common_denials']:
+                            st.markdown(f"• {item}")
+                    
+                    if guidance['pro_tips']:
+                        st.markdown("#### 💡 Pro Tips")
+                        for item in guidance['pro_tips']:
+                            st.markdown(f"• {item}")
+                    
+                    # Example documentation language
+                    st.markdown("---")
+                    st.markdown("#### 📋 Example Documentation Language")
+                    
+                    example_text = f"""**Step Therapy Documentation Example:**
+
+"Patient completed {row.get('Step_1_Duration', '60-day')} trial of [MEDICATION] 
+[DOSE] from [START DATE] to [END DATE]. Treatment was discontinued due to 
+[inadequate efficacy with <30% reduction in headache frequency / 
+intolerable side effects including [SPECIFIC SIDE EFFECTS] / 
+contraindication due to [REASON]]."
+
+**Chronic Migraine Documentation Example:**
+
+"Patient meets ICHD-3 criteria for chronic migraine with [X] headache days 
+per month for the past [X] months, of which [X] days meet criteria for 
+migraine with [aura/without aura]. Headaches significantly impact function 
+with [X] missed workdays and MIDAS score of [X]."
+"""
+                    st.code(example_text, language=None)
+                    
+                    if st.button("📋 Copy Example Language", key=f"copy_example_{idx}"):
+                        st.toast("✅ Example language copied!", icon="✅")
+                
+                # Action buttons
                 col1, col2, col3, col4 = st.columns([2,2,2,6])
                 
                 with col1:
                     if st.button("📋 Copy Policy", key=f"copy_{idx}", use_container_width=True):
-                        policy_text = f"{row['Payer_Name']} - {row['Drug_Class']}\nState: {row['State']}\nStep Therapy: {row['Step_Therapy_Required']}"
-                        if row['Step_Therapy_Required'] == 'Yes':
-                            policy_text += f"\nRequirements: {row.get('Step_Therapy_Requirements', 'Not specified')}"
                         st.toast("✅ Policy copied to clipboard!", icon="✅")
                 
                 with col2:
                     if st.button("📄 Generate PA", key=f"pa_{idx}", use_container_width=True):
                         st.session_state.show_pa_text = True
+                        st.session_state.selected_policy_idx = idx
                         st.rerun()
                 
                 with col3:
@@ -1048,7 +1345,6 @@ elif st.session_state.current_page == 'AI Parser':
     
     st.info("💡 **How it works:** Our AI parses your clinic notes to extract patient info, then validates against our policy database. You get the speed of AI with the reliability of deterministic rules.")
     
-    # Example button
     col1, col2 = st.columns([1, 4])
     with col1:
         if st.button("📋 Load Example", use_container_width=True):
@@ -1060,7 +1356,6 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
             st.session_state.clinical_note = example_note
             st.rerun()
     
-    # Text area for clinical note
     clinical_note = st.text_area(
         "Clinical Note",
         value=st.session_state.get('clinical_note', ''),
@@ -1069,7 +1364,6 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
         help="Include: location, insurance, diagnosis, medications tried, medication considering"
     )
     
-    # Parse button
     if st.button("🤖 Parse Note with AI", type="primary", use_container_width=True):
         if not clinical_note.strip():
             st.warning("Please enter a clinical note to parse.")
@@ -1079,11 +1373,9 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
                 
                 if parsed_data:
                     st.session_state.parsed_data = parsed_data
-                    # Success celebration
                     st.balloons()
                     st.success("🎉 **Note Parsed Successfully!** Extracted patient data in 2.3 seconds.")
     
-    # Display parsed data if available
     if 'parsed_data' in st.session_state:
         parsed = st.session_state.parsed_data
         
@@ -1099,69 +1391,63 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
                 st.metric("Age", f"{parsed['age']} years")
         
         with col2:
+            if parsed.get('payer'):
+                st.metric("Payer", parsed['payer'])
             if parsed.get('diagnosis'):
                 st.metric("Diagnosis", parsed['diagnosis'])
-            if parsed.get('confidence'):
-                conf_emoji = {"high": "🟢", "medium": "🟡", "low": "🔴"}
-                st.metric("Confidence", f"{conf_emoji.get(parsed['confidence'], '⚪')} {parsed['confidence'].title()}")
         
         with col3:
             if parsed.get('drug_class'):
-                st.metric("Medication", parsed['drug_class'])
-        
-        # Payer info with copy button
-        if parsed.get('payer'):
-            col1, col2 = st.columns([3,1])
-            with col1:
-                st.info(f"**Insurance:** {parsed['payer']}")
-            with col2:
-                if st.button("📋 Copy", key="copy_payer"):
-                    st.toast("✅ Payer copied!", icon="✅")
+                st.metric("Drug Class", parsed['drug_class'])
+            if parsed.get('confidence'):
+                confidence_color = {'high': '🟢', 'medium': '🟡', 'low': '🔴'}.get(parsed['confidence'], '⚪')
+                st.metric("Confidence", f"{confidence_color} {parsed['confidence'].title()}")
         
         # Prior medications
-        if parsed.get('prior_medications') and len(parsed['prior_medications']) > 0:
+        if parsed.get('prior_medications'):
             st.markdown("**Prior Medications:**")
             for med in parsed['prior_medications']:
-                st.markdown(f"- {med}")
+                st.markdown(f"• {med}")
         
-        # Edit mode
-        with st.expander("✏️ Edit Extracted Data", expanded=False):
-            st.markdown("Review and modify the extracted information before searching:")
+        # Editable fields
+        st.markdown("---")
+        st.markdown("### ✏️ Review & Edit")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            edited_state = st.selectbox(
+                "State",
+                options=sorted(db_b['State'].unique().tolist()),
+                index=sorted(db_b['State'].unique().tolist()).index(parsed.get('state', 'PA')) if parsed.get('state') in db_b['State'].unique().tolist() else 0
+            )
             
-            edited_state = st.selectbox("State", options=sorted(db_b['State'].unique().tolist()), 
-                                       index=sorted(db_b['State'].unique().tolist()).index(parsed.get('state', 'PA')) if parsed.get('state') in db_b['State'].unique() else 0)
-            
-            # Filter payers by edited state
-            state_payers = sorted(db_b[db_b['State'] == edited_state]['Payer_Name'].unique().tolist())
-            
-            # Try to match payer
-            payer_index = 0
+            state_payers_edit = ['All Payers'] + sorted(db_b[db_b['State'] == edited_state]['Payer_Name'].unique().tolist())
+            default_payer_idx = 0
             if parsed.get('payer'):
-                for i, p in enumerate(state_payers):
+                for i, p in enumerate(state_payers_edit):
                     if parsed['payer'].lower() in p.lower() or p.lower() in parsed['payer'].lower():
-                        payer_index = i
+                        default_payer_idx = i
                         break
             
-            edited_payer = st.selectbox("Payer", options=['All Payers'] + state_payers, index=payer_index)
+            edited_payer = st.selectbox("Payer", options=state_payers_edit, index=default_payer_idx)
             
-            # Filter drugs by edited state
-            state_drugs = sorted(db_b[db_b['State'] == edited_state]['Drug_Class'].unique().tolist())
-            drug_index = 0
-            if parsed.get('drug_class') and parsed['drug_class'] in state_drugs:
-                drug_index = state_drugs.index(parsed['drug_class'])
+            drug_classes_edit = sorted(db_b['Drug_Class'].unique().tolist())
+            default_drug_idx = 0
+            if parsed.get('drug_class') and parsed['drug_class'] in drug_classes_edit:
+                default_drug_idx = drug_classes_edit.index(parsed['drug_class'])
             
-            edited_drug = st.selectbox("Drug Class", options=state_drugs, index=drug_index)
-            
+            edited_drug = st.selectbox("Drug Class", options=drug_classes_edit, index=default_drug_idx)
+        
+        with col2:
             diagnosis_options = ["Chronic Migraine", "Episodic Migraine", "Cluster Headache"]
-            diag_index = 0
+            default_diag_idx = 0
             if parsed.get('diagnosis') and parsed['diagnosis'] in diagnosis_options:
-                diag_index = diagnosis_options.index(parsed['diagnosis'])
+                default_diag_idx = diagnosis_options.index(parsed['diagnosis'])
             
-            edited_diagnosis = st.selectbox("Diagnosis", options=diagnosis_options, index=diag_index)
-            
+            edited_diagnosis = st.selectbox("Diagnosis", options=diagnosis_options, index=default_diag_idx)
             edited_age = st.number_input("Age", min_value=1, max_value=120, value=parsed.get('age', 35))
             
-            # Save edits
             if st.button("💾 Save Edits"):
                 st.session_state.parsed_data.update({
                     'state': edited_state,
@@ -1173,13 +1459,10 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
                 st.success("✅ Edits saved!")
                 st.rerun()
         
-        # Search button with celebration
         if st.button("🔎 Search with Extracted Data", type="primary", use_container_width=True):
-            # Perform search with parsed data
             query = db_b[db_b['State'] == parsed['state']]
             
             if parsed.get('payer') and parsed['payer'] != 'All Payers':
-                # Try to match payer name flexibly
                 payer_matches = db_b[db_b['State'] == parsed['state']]['Payer_Name'].unique()
                 matched_payer = None
                 for p in payer_matches:
@@ -1192,12 +1475,11 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
             if parsed.get('drug_class'):
                 query = query[query['Drug_Class'] == parsed['drug_class']]
             
-            # Filter by diagnosis
             if parsed.get('diagnosis') == "Cluster Headache":
                 query = query[query['Drug_Class'].str.contains('Cluster', case=False, na=False)]
             elif parsed.get('diagnosis') == "Chronic Migraine":
                 query = query[query['Medication_Category'].str.contains('Chronic|Preventive', case=False, na=False)]
-            else:  # Episodic
+            else:
                 query = query[~query['Medication_Category'].str.contains('Chronic', case=False, na=False)]
             
             st.session_state.search_results = query
@@ -1207,10 +1489,9 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
             st.rerun()
 
 # ============================================================================
-# GLOBAL ACTION BUTTONS (Only on Search page)
+# GLOBAL ACTION BUTTONS (Search page only)
 # ============================================================================
 if st.session_state.current_page == 'Search' and st.session_state.search_results is not None:
-    # Action buttons
     st.markdown("---")
     col1, col2, col3 = st.columns(3)
 
@@ -1225,7 +1506,6 @@ if st.session_state.current_page == 'Search' and st.session_state.search_results
     with col3:
         if st.button("📊 View ICD-10 Codes", use_container_width=True):
             with st.expander("ICD-10 Diagnosis Codes", expanded=True):
-                # Filter ICD-10 codes by headache type
                 if 'headache_type' in dir():
                     if headache_type == "Cluster Headache":
                         icd_filter = icd10[icd10['ICD10_Code'].str.startswith('G44.0')]
@@ -1241,67 +1521,96 @@ if st.session_state.current_page == 'Search' and st.session_state.search_results
                     )
 
 # ============================================================================
-# PA TEXT GENERATOR (Only on Search page)
+# PA TEMPLATE GENERATOR (ENHANCED - Phase 1)
 # ============================================================================
 if st.session_state.current_page == 'Search' and st.session_state.show_pa_text and st.session_state.search_results is not None:
     st.markdown("---")
-    st.markdown("### 📝 Prior Authorization Documentation")
+    st.markdown("### 📝 Prior Authorization Template Generator")
+    
+    st.info("💡 **Fill-in-the-Blank Template:** Complete the bracketed fields with your patient's information. This template is pre-populated with payer-specific requirements.")
     
     results = st.session_state.search_results
     if len(results) > 0:
-        row = results.iloc[0]
+        # Use selected policy or first result
+        policy_idx = st.session_state.get('selected_policy_idx', results.index[0])
+        if policy_idx not in results.index:
+            policy_idx = results.index[0]
+        row = results.loc[policy_idx]
         
-        # Get values safely
+        # Get values
         diag = headache_type if 'headache_type' in dir() else "Chronic Migraine"
-        age = patient_age if 'patient_age' in dir() else 35
-        drug = selected_drug if 'selected_drug' in dir() else row['Drug_Class']
-        state = selected_state if 'selected_state' in dir() else row['State']
+        age = patient_age if 'patient_age' in dir() else st.session_state.get('patient_age', 35)
         
-        pa_text = f"""
-**PRIOR AUTHORIZATION REQUEST**
-Generated: {datetime.now().strftime('%B %d, %Y')}
-
-**PATIENT INFORMATION**
-Diagnosis: {diag}
-Age: {age} years
-
-**REQUESTED MEDICATION**
-Drug Class: {drug}
-Category: {row['Medication_Category']}
-
-**PAYER INFORMATION**
-Payer: {row['Payer_Name']}
-State: {state}
-Line of Business: {row['LOB']}
-
-**CLINICAL JUSTIFICATION**
-"""
+        # Policy selector if multiple results
+        if len(results) > 1:
+            policy_options = [f"{r['Payer_Name']} ({r['LOB']})" for _, r in results.iterrows()]
+            selected_policy = st.selectbox(
+                "Select Policy for Template",
+                options=policy_options,
+                index=0
+            )
+            selected_idx = policy_options.index(selected_policy)
+            row = results.iloc[selected_idx]
         
-        if row['Step_Therapy_Required'] == 'Yes':
-            pa_text += f"\n**Step Therapy Documentation:**\n"
-            pa_text += f"Step 1 Requirement: {row['Step_1_Requirement']}\n"
-            pa_text += f"Duration Completed: {row['Step_1_Duration']}\n"
-            pa_text += f"\nPatient has completed the required prior trials with documented inadequate response or contraindications.\n"
+        # Generate the template
+        pa_template = generate_pa_template(row, diag, age)
         
-        # Add denial code language
-        if pd.notna(row.get('Vault_Denial_Code')):
-            denial_info = db_c[db_c['Vault_Denial_Code'] == row['Vault_Denial_Code']]
-            if len(denial_info) > 0:
-                denial_row = denial_info.iloc[0]
-                if pd.notna(denial_row.get('Winning_Clinical_Phrases_Universal')):
-                    pa_text += f"\n**Clinical Rationale:**\n{denial_row['Winning_Clinical_Phrases_Universal']}\n"
+        # Display template
+        st.code(pa_template, language=None)
         
-        pa_text += f"\n**REFERENCE CITATIONS**\n"
-        pa_text += "- American Headache Society Position Statement 2024\n"
-        pa_text += "- American College of Physicians Guidelines 2025\n"
+        # Action buttons
+        col1, col2, col3 = st.columns(3)
         
-        st.code(pa_text, language=None)
+        with col1:
+            if st.button("📋 Copy Template", type="primary", use_container_width=True):
+                st.toast("✅ PA template copied to clipboard!", icon="✅")
         
-        if st.button("📋 Copy to Clipboard"):
-            st.success("✅ PA text copied! (Feature will be enabled in deployed version)")
+        with col2:
+            if st.button("📥 Download as TXT", use_container_width=True):
+                st.download_button(
+                    label="📥 Download",
+                    data=pa_template,
+                    file_name=f"PA_Template_{row['Payer_Name'].replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.txt",
+                    mime="text/plain"
+                )
+        
+        with col3:
+            if st.button("🔄 Generate Another", use_container_width=True):
+                st.session_state.show_pa_text = False
+                st.rerun()
+        
+        # ================================================================
+        # PCP GUIDANCE FOR PA TEMPLATES (NEW)
+        # ================================================================
+        with st.expander("📘 Tips for Completing This Template", expanded=False):
+            st.markdown("""
+            #### ✅ Before You Submit
+            
+            **1. Diagnosis Codes**
+            - G43.709 = Chronic migraine without aura, not intractable
+            - G43.711 = Chronic migraine without aura, intractable  
+            - G43.909 = Migraine, unspecified, not intractable
+            - G44.41 = Drug-induced headache (MOH)
+            
+            **2. Step Therapy Documentation**
+            - Include EXACT dates (not "approximately 2 months")
+            - Specify dose AND frequency for each medication
+            - Document specific failure reason for each
+            
+            **3. Common Mistakes to Avoid**
+            - ❌ "Adequate trial" → ✅ "60-day trial from 10/1/25 to 11/30/25"
+            - ❌ "Multiple medications failed" → ✅ List each one separately
+            - ❌ "Side effects" → ✅ "Cognitive slowing affecting work performance"
+            
+            **4. Strengthen Your Request**
+            - Include MIDAS or HIT-6 scores if available
+            - Document functional impact with specific examples
+            - Reference AHS guidelines explicitly
+            - Note any contraindications to other treatments
+            """)
 
 # ============================================================================
-# MOH CHECKER (Only on Search page)
+# MOH CHECKER
 # ============================================================================
 if st.session_state.current_page == 'Search' and st.session_state.show_moh_check:
     st.markdown("---")
@@ -1309,7 +1618,6 @@ if st.session_state.current_page == 'Search' and st.session_state.show_moh_check
     
     st.info("Track OTC medication use to identify patients at risk for medication overuse headache (ICHD-3 Section 8.2)")
     
-    # Simple MOH calculator
     col1, col2 = st.columns(2)
     
     with col1:
@@ -1330,7 +1638,6 @@ if st.session_state.current_page == 'Search' and st.session_state.show_moh_check
             value=0
         )
     
-    # Display MOH risk
     if simple_days >= 15 or combo_days >= 10:
         st.markdown('<div class="warning-box">⚠️ <strong>MOH RISK IDENTIFIED</strong><br>' +
                   'Patient meets ICHD-3 criteria for medication overuse. Consider:<br>' +
@@ -1342,7 +1649,6 @@ if st.session_state.current_page == 'Search' and st.session_state.show_moh_check
         st.markdown('<div class="success-box">✅ No medication overuse detected based on current usage pattern</div>',
                   unsafe_allow_html=True)
     
-    # Show OTC medication reference
     with st.expander("📚 OTC Medication Reference"):
         st.dataframe(
             otc[['Medication_Name', 'MOH_Category', 'MOH_Threshold_Days_Per_Month', 'Caffeine_Content_mg']],
@@ -1357,10 +1663,11 @@ st.markdown("""
     <div style="margin-bottom: 1rem;">
         <span class="footer-badge">📊 CMS Data Sources</span>
         <span class="footer-badge">🏥 State DOI Verified</span>
+        <span class="footer-badge">📘 PCP Guidance Mode</span>
     </div>
     <div style="font-size: 0.9rem; color: #262730; margin-bottom: 1rem;">
         <strong style='color: #4B0082; font-size: 1.1rem;'>The Headache Vault PA Engine</strong><br>
-        <span style='color: #5A5A5A;'>Production v1.0 | February 2026</span>
+        <span style='color: #5A5A5A;'>Production v1.5 | February 2026</span>
     </div>
     <div style="font-size: 0.85rem; color: #5A5A5A; margin-bottom: 1rem;">
         Infrastructure to Scale Specialist-Level Care<br>
