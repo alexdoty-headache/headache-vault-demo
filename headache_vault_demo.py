@@ -451,9 +451,18 @@ st.markdown("""
     }
     
     /* Except for elements with specific styling */
-    .stat-card *, .policy-title, .policy-badge, .policy-section-title,
-    .step-number *, .gold-card-badge, .production-footer * {
-        /* These keep their custom colors - already tested */
+    /* STAT CARDS - Force white text on purple background */
+    .stat-card,
+    .stat-card *,
+    .stat-card div,
+    .stat-card .stat-number,
+    .stat-card .stat-label {
+        color: white !important;
+    }
+    
+    /* Other exceptions */
+    .step-number * {
+        color: white !important;
     }
     
     /* Force selectbox and dropdown text */
@@ -947,6 +956,12 @@ elif st.session_state.current_page == 'Search':
                     step_therapies = str(row.get('Step_Therapy_Requirements', 'Not specified')).split(';')
                     durations = str(row.get('Step_Therapy_Duration', 'Trial duration not specified')).split(';')
                     
+                    # Check if details are missing
+                    has_missing_info = (
+                        'Not specified' in str(row.get('Step_Therapy_Requirements', '')) or
+                        'Trial duration not specified' in str(row.get('Step_Therapy_Duration', ''))
+                    )
+                    
                     for i, (therapy, duration) in enumerate(zip(step_therapies, durations if len(durations) == len(step_therapies) else ['Trial required'] * len(step_therapies)), 1):
                         st.markdown(f"""
                         <div class="step-item">
@@ -955,6 +970,21 @@ elif st.session_state.current_page == 'Search':
                                 <strong style="color: #262730;">{therapy.strip()}</strong><br>
                                 <small style="color: #708090;">{duration.strip()}</small>
                             </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    # Add guidance if details are missing
+                    if has_missing_info:
+                        st.markdown("""
+                        <div style="background: #FFF9E6; padding: 1rem; border-radius: 8px; border-left: 4px solid #FFD700; margin-top: 0.75rem;">
+                            <strong style="color: #B8860B;">💡 Missing Details? Contact the Payer</strong><br>
+                            <small style="color: #666; line-height: 1.6;">
+                            When step therapy requirements aren't specified in our database:<br>
+                            • Call the payer's PA department for specific requirements<br>
+                            • Ask about trial duration, dosing, and failure criteria<br>
+                            • Request their clinical policy bulletin (CPB) number<br>
+                            • Document the conversation in your PA submission
+                            </small>
                         </div>
                         """, unsafe_allow_html=True)
                     
