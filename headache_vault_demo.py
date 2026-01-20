@@ -1057,48 +1057,109 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
                     if parsed['payer'].lower() in p.lower() or p.lower() in parsed['payer'].lower():
                         payer_index = i
                         break
-                            (db_e['Drug_Class'] == check_drug)
-                        ]
-                        
-                        if len(ped_overrides) > 0:
-                            st.markdown('<div class="warning-box">👶 <strong>Pediatric Considerations</strong></div>', 
-                                      unsafe_allow_html=True)
-                            for _, ped_row in ped_overrides.iterrows():
-                                age_range = ped_row.get('Age_Range', 'See policy')
-                                restriction = ped_row.get('Restriction_Type', 'Age restriction')
-                                st.markdown(f"- **{age_range}:** {restriction}")
-
-# Action buttons
-st.markdown("---")
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    if st.button("📝 Generate PA Documentation", type="primary", use_container_width=True):
-        st.session_state.show_pa_text = True
-
-with col2:
-    if st.button("⚕️ Check MOH Risk", use_container_width=True):
-        st.session_state.show_moh_check = True
-
-with col3:
-    if st.button("📊 View ICD-10 Codes", use_container_width=True):
-        with st.expander("ICD-10 Diagnosis Codes", expanded=True):
-            # Filter ICD-10 codes by headache type
-            if headache_type == "Cluster Headache":
-                icd_filter = icd10[icd10['ICD10_Code'].str.startswith('G44.0')]
-            elif headache_type == "Chronic Migraine":
-                icd_filter = icd10[icd10['ICD10_Code'].str.contains('G43.*1', regex=True)]
-            else:
-                icd_filter = icd10[icd10['ICD10_Code'].str.contains('G43.*0', regex=True)]
             
-            st.dataframe(
-                icd_filter[['ICD10_Code', 'ICD10_Description', 'Diagnostic_Criteria_Summary']],
-                use_container_width=True,
-                hide_index=True
-            )
+            edited_payer = st.selectbox("Payer", options=['All Payers'] + state_payers, index=payer_index)
+            
+            # Filter drugs by edited state
+            state_drugs = sorted(db_b[db_b['State'] == edited_state]['Drug_Class'].unique().tolist())
+            drug_index = 0
+            if parsed.get('drug_class') and parsed['drug_class'] in state_drugs:
+                drug_index = state_drugs.index(parsed['drug_class'])
+            
+            edited_drug = st.selectbox("Drug Class", options=state_drugs, index=drug_index)
+            
+            diagnosis_options = ["Chronic Migraine", "Episodic Migraine", "Cluster Headache"]
+            diag_index = 0
+            if parsed.get('diagnosis') and parsed['diagnosis'] in diagnosis_options:
+                diag_index = diagnosis_options.index(parsed['diagnosis'])
+            
+            edited_diagnosis = st.selectbox("Diagnosis", options=diagnosis_options, index=diag_index)
+            
+            edited_age = st.number_input("Age", min_value=1, max_value=120, value=parsed.get('age', 35))
+            
+            # Save edits
+            if st.button("💾 Save Edits"):
+                st.session_state.parsed_data.update({
+                    'state': edited_state,
+                    'payer': edited_payer,
+                    'drug_class': edited_drug,
+                    'diagnosis': edited_diagnosis,
+                    'age': edited_age
+                })
+                st.success("✅ Edits saved!")
+                st.rerun()
+        
+        # Search button with celebration
+        if st.button("🔎 Search with Extracted Data", type="primary", use_container_width=True):
+            # Perform search with parsed data
+            query = db_b[db_b['State'] == parsed['state']]
+            
+            if parsed.get('payer') and parsed['payer'] != 'All Payers':
+                # Try to match payer name flexibly
+                payer_matches = db_b[db_b['State'] == parsed['state']]['Payer_Name'].unique()
+                matched_payer = None
+                for p in payer_matches:
+                    if parsed['payer'].lower() in p.lower() or p.lower() in parsed['payer'].lower():
+                        matched_payer = p
+                        break
+                if matched_payer:
+                    query = query[query['Payer_Name'] == matched_payer]
+            
+            if parsed.get('drug_class'):
+                query = query[query['Drug_Class'] == parsed['drug_class']]
+            
+            # Filter by diagnosis
+            if parsed.get('diagnosis') == "Cluster Headache":
+                query = query[query['Drug_Class'].str.contains('Cluster', case=False, na=False)]
+            elif parsed.get('diagnosis') == "Chronic Migraine":
+                query = query[query['Medication_Category'].str.contains('Chronic|Preventive', case=False, na=False)]
+            else:  # Episodic
+                query = query[~query['Medication_Category'].str.contains('Chronic', case=False, na=False)]
+            
+            st.session_state.search_results = query
+            st.session_state.patient_age = parsed.get('age', 35)
+            st.session_state.current_page = 'Search'
+            st.toast("🎉 Policy search complete! Found {} matching policies.".format(len(query)), icon="🎉")
+            st.rerun()
 
-# PA Text Generator
-if st.session_state.show_pa_text and st.session_state.search_results is not None:
+# ============================================================================
+# GLOBAL ACTION BUTTONS (Only on Search page)
+# ============================================================================
+if st.session_state.current_page == 'Search' and st.session_state.search_results is not None:
+    # Action buttons
+    st.markdown("---")
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        if st.button("📝 Generate PA Documentation", type="primary", use_container_width=True):
+            st.session_state.show_pa_text = True
+
+    with col2:
+        if st.button("⚕️ Check MOH Risk", use_container_width=True):
+            st.session_state.show_moh_check = True
+
+    with col3:
+        if st.button("📊 View ICD-10 Codes", use_container_width=True):
+            with st.expander("ICD-10 Diagnosis Codes", expanded=True):
+                # Filter ICD-10 codes by headache type
+                if 'headache_type' in dir():
+                    if headache_type == "Cluster Headache":
+                        icd_filter = icd10[icd10['ICD10_Code'].str.startswith('G44.0')]
+                    elif headache_type == "Chronic Migraine":
+                        icd_filter = icd10[icd10['ICD10_Code'].str.contains('G43.*1', regex=True)]
+                    else:
+                        icd_filter = icd10[icd10['ICD10_Code'].str.contains('G43.*0', regex=True)]
+                    
+                    st.dataframe(
+                        icd_filter[['ICD10_Code', 'ICD10_Description', 'Diagnostic_Criteria_Summary']],
+                        use_container_width=True,
+                        hide_index=True
+                    )
+
+# ============================================================================
+# PA TEXT GENERATOR (Only on Search page)
+# ============================================================================
+if st.session_state.current_page == 'Search' and st.session_state.show_pa_text and st.session_state.search_results is not None:
     st.markdown("---")
     st.markdown("### 📝 Prior Authorization Documentation")
     
@@ -1106,21 +1167,27 @@ if st.session_state.show_pa_text and st.session_state.search_results is not None
     if len(results) > 0:
         row = results.iloc[0]
         
+        # Get values safely
+        diag = headache_type if 'headache_type' in dir() else "Chronic Migraine"
+        age = patient_age if 'patient_age' in dir() else 35
+        drug = selected_drug if 'selected_drug' in dir() else row['Drug_Class']
+        state = selected_state if 'selected_state' in dir() else row['State']
+        
         pa_text = f"""
 **PRIOR AUTHORIZATION REQUEST**
 Generated: {datetime.now().strftime('%B %d, %Y')}
 
 **PATIENT INFORMATION**
-Diagnosis: {headache_type}
-Age: {patient_age} years
+Diagnosis: {diag}
+Age: {age} years
 
 **REQUESTED MEDICATION**
-Drug Class: {selected_drug}
+Drug Class: {drug}
 Category: {row['Medication_Category']}
 
 **PAYER INFORMATION**
 Payer: {row['Payer_Name']}
-State: {selected_state}
+State: {state}
 Line of Business: {row['LOB']}
 
 **CLINICAL JUSTIFICATION**
@@ -1149,8 +1216,10 @@ Line of Business: {row['LOB']}
         if st.button("📋 Copy to Clipboard"):
             st.success("✅ PA text copied! (Feature will be enabled in deployed version)")
 
-# MOH Checker
-if st.session_state.show_moh_check:
+# ============================================================================
+# MOH CHECKER (Only on Search page)
+# ============================================================================
+if st.session_state.current_page == 'Search' and st.session_state.show_moh_check:
     st.markdown("---")
     st.markdown("### ⚕️ Medication Overuse Headache (MOH) Screening")
     
