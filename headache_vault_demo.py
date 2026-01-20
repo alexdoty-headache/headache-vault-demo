@@ -1343,25 +1343,45 @@ elif st.session_state.current_page == 'AI Parser':
     st.markdown("### 🤖 AI Clinical Note Parser")
     st.markdown("Paste unstructured clinical notes and let AI extract structured patient data in seconds.")
     
-    st.info("💡 **How it works:** Our AI parses your clinic notes to extract patient info, then validates against our policy database. You get the speed of AI with the reliability of deterministic rules.")
+    # HIPAA Warning
+    st.warning("""
+    ⚠️ **HIPAA Notice: Do Not Enter Protected Health Information (PHI)**
+    
+    This tool uses external AI services and is **not HIPAA compliant**. Before pasting clinical notes, remove or replace:
+    
+    • **Patient name** → use "Patient" or initials
+    • **Date of birth** → use age only (e.g., "45-year-old")
+    • **Medical record numbers, SSN, or member IDs**
+    • **Specific dates of service** → use relative dates (e.g., "3 months ago")
+    • **Contact information** (address, phone, email)
+    • **Any other identifying information**
+    
+    ✅ **Safe to include:** Age, gender, diagnosis, symptoms, medication names/doses, treatment history, insurance company name, state of residence.
+    """)
+    
+    st.info("💡 **How it works:** Our AI parses your de-identified notes to extract clinical details, then validates against our policy database. You get the speed of AI with the reliability of deterministic rules.")
     
     col1, col2 = st.columns([1, 4])
     with col1:
         if st.button("📋 Load Example", use_container_width=True):
-            example_note = """45-year-old female with chronic migraine, approximately 20 headache days per month. 
-Lives in Philadelphia, Pennsylvania. Has Independence Blue Cross commercial insurance. 
-Previously tried topiramate 100mg daily for 12 weeks - discontinued due to cognitive side effects. 
+            example_note = """45-year-old female with chronic migraine, approximately 20 headache days per month for the past 6 months. 
+Lives in Pennsylvania. Has Independence Blue Cross commercial insurance. 
+Previously tried topiramate 100mg daily for 12 weeks - discontinued due to cognitive side effects (word-finding difficulty, concentration problems). 
 Also failed propranolol 80mg BID for 8 weeks - inadequate response with less than 30% reduction in headache frequency.
-Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
+Patient is interested in trying Aimovig (erenumab) for migraine prevention.
+No cardiovascular history. BMI 24."""
             st.session_state.clinical_note = example_note
             st.rerun()
     
+    with col2:
+        st.caption("👆 Example shows properly de-identified note: age (not DOB), state (not address), no patient name or MRN")
+    
     clinical_note = st.text_area(
-        "Clinical Note",
+        "Clinical Note (De-identified)",
         value=st.session_state.get('clinical_note', ''),
         height=250,
-        placeholder="Paste patient information here...\n\nExample:\n45yo F with chronic migraine, 20+ days/month. Lives in PA, has Highmark BCBS. Failed topiramate and propranolol. Considering Aimovig.",
-        help="Include: location, insurance, diagnosis, medications tried, medication considering"
+        placeholder="Paste DE-IDENTIFIED patient information here...\n\nExample (no PHI):\n45yo F with chronic migraine, 20+ days/month. Lives in PA, has Highmark BCBS. Failed topiramate 100mg x12wks (cognitive SE) and propranolol 80mg BID x8wks (ineffective). Considering Aimovig.\n\n⚠️ Remember: No names, DOB, MRN, or specific dates.",
+        help="Include: Age, gender, state, insurance company, diagnosis, medications tried (with doses/durations), medication being requested. Do NOT include: Patient name, DOB, MRN, SSN, specific dates, or addresses."
     )
     
     if st.button("🤖 Parse Note with AI", type="primary", use_container_width=True):
