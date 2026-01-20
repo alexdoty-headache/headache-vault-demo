@@ -428,6 +428,61 @@ st.markdown("""
     .stCaption {
         color: #708090 !important;  /* Slate gray - readable on white */
     }
+    
+    /* ===================================================================== */
+    /* NUCLEAR OPTION - FORCE ALL TEXT VISIBLE */
+    /* ===================================================================== */
+    
+    /* Force all text elements to be dark */
+    p, span, div, label, li, td, th, h1, h2, h3, h4, h5, h6 {
+        color: #262730 !important;
+    }
+    
+    /* Except for elements with specific styling */
+    .stat-card *, .policy-title, .policy-badge, .policy-section-title,
+    .step-number *, .gold-card-badge, .production-footer * {
+        /* These keep their custom colors - already tested */
+    }
+    
+    /* Force selectbox and dropdown text */
+    [data-baseweb="select"] span,
+    [data-baseweb="select"] div,
+    [role="listbox"] *,
+    [role="option"] * {
+        color: #262730 !important;
+    }
+    
+    /* Force all button text except primary purple buttons */
+    button:not([kind="primary"]) * {
+        color: #4B0082 !important;
+    }
+    
+    /* Force dataframe text */
+    .dataframe, .dataframe *, table, table * {
+        color: #262730 !important;
+        background-color: #FFFFFF !important;
+    }
+    
+    /* Force markdown container text */
+    [data-testid="stMarkdownContainer"],
+    [data-testid="stMarkdownContainer"] *,
+    [data-testid="stMarkdownContainer"] p,
+    [data-testid="stMarkdownContainer"] span,
+    [data-testid="stMarkdownContainer"] div {
+        color: #262730 !important;
+    }
+    
+    /* Force all text areas and inputs */
+    textarea, input, select {
+        color: #262730 !important;
+        background-color: #FFFFFF !important;
+    }
+    
+    /* Force code blocks */
+    code, pre, .stCode {
+        color: #262730 !important;
+        background-color: #F8F9FA !important;
+    }
 
 </style>
 """, unsafe_allow_html=True)
@@ -744,14 +799,9 @@ elif st.session_state.current_page == 'Search':
     
     st.markdown("<br>", unsafe_allow_html=True)
     
-    # Search filters
-    st.markdown("#### Search Filters")
-    quick_search_mode = True
-
-# ============================================================================
-# SIDEBAR (Only on Search page)
-# ============================================================================
-if st.session_state.current_page == 'Search':
+    # ============================================================================
+    # SIDEBAR FILTERS
+    # ============================================================================
     # Sidebar filters
     st.sidebar.header("🔍 Search Filters")
 
@@ -766,193 +816,193 @@ if st.session_state.current_page == 'Search':
     # Filter payers by state
     state_payers = db_b[db_b['State'] == selected_state]['Payer_Name'].unique().tolist()
     selected_payer = st.sidebar.selectbox(
-    "Payer",
-    options=['All Payers'] + sorted(state_payers)
-)
+        "Payer",
+        options=['All Payers'] + sorted(state_payers)
+    )
 
-# Drug class selection - filtered by state
-state_drug_classes = sorted(db_b[db_b['State'] == selected_state]['Drug_Class'].unique().tolist())
-selected_drug = st.sidebar.selectbox(
-    "Medication Class",
-    options=state_drug_classes,
-    help=f"{len(state_drug_classes)} drug classes available in {selected_state}"
-)
+    # Drug class selection - filtered by state
+    state_drug_classes = sorted(db_b[db_b['State'] == selected_state]['Drug_Class'].unique().tolist())
+    selected_drug = st.sidebar.selectbox(
+        "Medication Class",
+        options=state_drug_classes,
+        help=f"{len(state_drug_classes)} drug classes available in {selected_state}"
+    )
 
-# Headache type
-headache_type = st.sidebar.radio(
-    "Headache Type",
-    options=["Chronic Migraine", "Episodic Migraine", "Cluster Headache"],
-    help="Select the primary diagnosis"
-)
+    # Headache type
+    headache_type = st.sidebar.radio(
+        "Headache Type",
+        options=["Chronic Migraine", "Episodic Migraine", "Cluster Headache"],
+        help="Select the primary diagnosis"
+    )
 
-# Patient age (for pediatric overrides)
-patient_age = st.sidebar.number_input(
-    "Patient Age (years)",
-    min_value=1,
-    max_value=120,
-    value=35,
-    help="Used to check pediatric prescribing restrictions"
-)
+    # Patient age (for pediatric overrides)
+    patient_age = st.sidebar.number_input(
+        "Patient Age (years)",
+        min_value=1,
+        max_value=120,
+        value=35,
+        help="Used to check pediatric prescribing restrictions"
+    )
 
-# Search button
-st.sidebar.markdown("---")
+    # Search button
+    st.sidebar.markdown("---")
 
-# Show quick stats
-total_in_state = len(db_b[db_b['State'] == selected_state])
-st.sidebar.markdown(f"""
+    # Show quick stats
+    total_in_state = len(db_b[db_b['State'] == selected_state])
+    st.sidebar.markdown(f"""
 <div style='background-color: white; padding: 0.75rem; border-radius: 8px; border-left: 4px solid #4B0082; margin: 0.5rem 0;'>
     <div style='color: #262730; font-weight: 600;'>📊 {total_in_state} policies in {selected_state}</div>
 </div>
 """, unsafe_allow_html=True)
 
-# Database coverage note
-st.sidebar.markdown("""
+    # Database coverage note
+    st.sidebar.markdown("""
 <div style='color: #5A5A5A; font-size: 0.85rem; margin-top: 0.5rem; font-style: italic;'>
     💡 Database: 752 policies across 50 states. Preventive gepant coverage expanding weekly.
 </div>
 """, unsafe_allow_html=True)
 
-search_clicked = st.sidebar.button("🔎 Search Policies", type="primary", use_container_width=True)
+    search_clicked = st.sidebar.button("🔎 Search Policies", type="primary", use_container_width=True)
 
-# Main content area - show results from either search method
-if (search_clicked or st.session_state.search_results is not None) or st.session_state.get('show_results', False):
-    if search_clicked:
-        # Perform search from sidebar
-        query = db_b[db_b['State'] == selected_state]
-        
-        if selected_payer != 'All Payers':
-            query = query[query['Payer_Name'] == selected_payer]
-        
-        query = query[query['Drug_Class'] == selected_drug]
-        
-        # Filter by headache type
-        if headache_type == "Cluster Headache":
-            query = query[query['Drug_Class'].str.contains('Cluster', case=False, na=False)]
-        elif headache_type == "Chronic Migraine":
-            query = query[query['Medication_Category'].str.contains('Chronic|Preventive', case=False, na=False)]
-        else:  # Episodic
-            query = query[~query['Medication_Category'].str.contains('Chronic', case=False, na=False)]
-        
-        st.session_state.search_results = query
-        st.session_state.patient_age = patient_age
-    
-    results = st.session_state.search_results
-    patient_age_display = st.session_state.get('patient_age', patient_age)
-    
-    if len(results) == 0:
-        st.warning("⚠️ No policies found for this combination.")
-        st.info("""
-        **Possible reasons:**
-        - This payer may not have a specific policy for this drug class
-        - Preventive gepant policies (Nurtec, Qulipta) are still being audited for some states
-        - Try selecting a different medication class or payer
-        
-        **Coverage notes:**
-        - All PA payers have policies for: CGRP mAbs, Botox, Gepants (acute)
-        - Preventive gepant coverage expanding weekly
-        """)
-    else:
-        # Display summary
-        st.markdown("---")
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            st.metric("Payers Found", len(results['Payer_Name'].unique()))
-        with col2:
-            st.metric("Policies Identified", len(results))
-        with col3:
-            requires_step = (results['Step_Therapy_Required'] == 'Yes').sum()
-            st.metric("Require Step Therapy", f"{requires_step}/{len(results)}")
-        
-        # Display each policy as a professional card
-        for idx, row in results.iterrows():
-            # Build policy card HTML
-            payer_badge = f'<span class="policy-badge">{row["State"]} | {row["LOB"]}</span>'
+    # Main content area - show results from either search method
+    if (search_clicked or st.session_state.search_results is not None) or st.session_state.get('show_results', False):
+        if search_clicked:
+            # Perform search from sidebar
+            query = db_b[db_b['State'] == selected_state]
             
-            card_html = f"""
-            <div class="policy-card">
-                <div class="policy-header">
-                    <div>
-                        <div class="policy-title">🏥 {row['Payer_Name']}</div>
-                        {payer_badge}
+            if selected_payer != 'All Payers':
+                query = query[query['Payer_Name'] == selected_payer]
+            
+            query = query[query['Drug_Class'] == selected_drug]
+            
+            # Filter by headache type
+            if headache_type == "Cluster Headache":
+                query = query[query['Drug_Class'].str.contains('Cluster', case=False, na=False)]
+            elif headache_type == "Chronic Migraine":
+                query = query[query['Medication_Category'].str.contains('Chronic|Preventive', case=False, na=False)]
+            else:  # Episodic
+                query = query[~query['Medication_Category'].str.contains('Chronic', case=False, na=False)]
+            
+            st.session_state.search_results = query
+            st.session_state.patient_age = patient_age
+        
+        results = st.session_state.search_results
+        patient_age_display = st.session_state.get('patient_age', patient_age if 'patient_age' in dir() else 35)
+        
+        if len(results) == 0:
+            st.warning("⚠️ No policies found for this combination.")
+            st.info("""
+            **Possible reasons:**
+            - This payer may not have a specific policy for this drug class
+            - Preventive gepant policies (Nurtec, Qulipta) are still being audited for some states
+            - Try selecting a different medication class or payer
+            
+            **Coverage notes:**
+            - All PA payers have policies for: CGRP mAbs, Botox, Gepants (acute)
+            - Preventive gepant coverage expanding weekly
+            """)
+        else:
+            # Display summary
+            st.markdown("---")
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                st.metric("Payers Found", len(results['Payer_Name'].unique()))
+            with col2:
+                st.metric("Policies Identified", len(results))
+            with col3:
+                requires_step = (results['Step_Therapy_Required'] == 'Yes').sum()
+                st.metric("Require Step Therapy", f"{requires_step}/{len(results)}")
+            
+            # Display each policy as a professional card
+            for idx, row in results.iterrows():
+                # Build policy card HTML
+                payer_badge = f'<span class="policy-badge">{row["State"]} | {row["LOB"]}</span>'
+                
+                card_html = f"""
+                <div class="policy-card">
+                    <div class="policy-header">
+                        <div>
+                            <div class="policy-title">🏥 {row['Payer_Name']}</div>
+                            {payer_badge}
+                        </div>
                     </div>
-                </div>
-            """
-            
-            # Step Therapy Section
-            if row['Step_Therapy_Required'] == 'Yes':
-                card_html += """
-                <div class="policy-section">
-                    <div class="policy-section-title">Step Therapy Required</div>
                 """
                 
-                step_therapies = str(row.get('Step_Therapy_Requirements', 'Not specified')).split(';')
-                durations = str(row.get('Step_Therapy_Duration', 'Trial duration not specified')).split(';')
+                # Step Therapy Section
+                if row['Step_Therapy_Required'] == 'Yes':
+                    card_html += """
+                    <div class="policy-section">
+                        <div class="policy-section-title">Step Therapy Required</div>
+                    """
+                    
+                    step_therapies = str(row.get('Step_Therapy_Requirements', 'Not specified')).split(';')
+                    durations = str(row.get('Step_Therapy_Duration', 'Trial duration not specified')).split(';')
+                    
+                    for i, (therapy, duration) in enumerate(zip(step_therapies, durations if len(durations) == len(step_therapies) else ['Trial required'] * len(step_therapies)), 1):
+                        card_html += f"""
+                        <div class="step-item">
+                            <div class="step-number">{i}</div>
+                            <div>
+                                <strong style="color: #262730;">{therapy.strip()}</strong><br>
+                                <small style="color: #708090;">{duration.strip()}</small>
+                            </div>
+                        </div>
+                        """
+                    
+                    card_html += "</div>"
+                else:
+                    card_html += """
+                    <div class="policy-section">
+                        <div style="background: #F0FFF4; padding: 1rem; border-radius: 8px; border-left: 4px solid #10B981;">
+                            <strong style="color: #10B981;">✅ No Step Therapy Required</strong><br>
+                            <small style="color: #666;">This medication can be prescribed without prior trials</small>
+                        </div>
+                    </div>
+                    """
                 
-                for i, (therapy, duration) in enumerate(zip(step_therapies, durations if len(durations) == len(step_therapies) else ['Trial required'] * len(step_therapies)), 1):
+                # Gold Card Status
+                if pd.notna(row.get('Gold_Card_Available')) and row['Gold_Card_Available'] == 'Yes':
+                    threshold_text = row.get('Gold_Card_Threshold', 'Check state requirements')
                     card_html += f"""
-                    <div class="step-item">
-                        <div class="step-number">{i}</div>
-                        <div>
-                            <strong style="color: #262730;">{therapy.strip()}</strong><br>
-                            <small style="color: #708090;">{duration.strip()}</small>
+                    <div class="policy-section">
+                        <div class="gold-card-badge">
+                            🏆 Gold Card Available
+                        </div>
+                        <div style="margin-top: 0.5rem; color: #666; font-size: 0.9rem;">
+                            {threshold_text}
                         </div>
                     </div>
                     """
                 
                 card_html += "</div>"
-            else:
-                card_html += """
-                <div class="policy-section">
-                    <div style="background: #F0FFF4; padding: 1rem; border-radius: 8px; border-left: 4px solid #10B981;">
-                        <strong style="color: #10B981;">✅ No Step Therapy Required</strong><br>
-                        <small style="color: #666;">This medication can be prescribed without prior trials</small>
-                    </div>
-                </div>
-                """
-            
-            # Gold Card Status
-            if pd.notna(row.get('Gold_Card_Available')) and row['Gold_Card_Available'] == 'Yes':
-                threshold_text = row.get('Gold_Card_Threshold', 'Check state requirements')
-                card_html += f"""
-                <div class="policy-section">
-                    <div class="gold-card-badge">
-                        🏆 Gold Card Available
-                    </div>
-                    <div style="margin-top: 0.5rem; color: #666; font-size: 0.9rem;">
-                        {threshold_text}
-                    </div>
-                </div>
-                """
-            
-            card_html += "</div>"
-            
-            st.markdown(card_html, unsafe_allow_html=True)
-            
-            # Action buttons below the card
-            col1, col2, col3, col4 = st.columns([2,2,2,6])
-            
-            with col1:
-                if st.button("📋 Copy Policy", key=f"copy_{idx}", use_container_width=True):
-                    policy_text = f"{row['Payer_Name']} - {row['Drug_Class']}\nState: {row['State']}\nStep Therapy: {row['Step_Therapy_Required']}"
-                    if row['Step_Therapy_Required'] == 'Yes':
-                        policy_text += f"\nRequirements: {row.get('Step_Therapy_Requirements', 'Not specified')}"
-                    st.toast("✅ Policy copied to clipboard!", icon="✅")
-            
-            with col2:
-                if st.button("📄 Generate PA", key=f"pa_{idx}", use_container_width=True):
-                    st.session_state.show_pa_text = True
-                    st.rerun()
-            
-            with col3:
-                if st.button("🔗 View Details", key=f"details_{idx}", use_container_width=True):
-                    with st.expander("📊 Full Policy Details", expanded=True):
-                        st.markdown(f"**Payer:** {row['Payer_Name']}")
-                        st.markdown(f"**State:** {row['State']}")
-                        st.markdown(f"**Line of Business:** {row['LOB']}")
-                        st.markdown(f"**Medication Category:** {row['Medication_Category']}")
-            
-            st.markdown("<br>", unsafe_allow_html=True)
+                
+                st.markdown(card_html, unsafe_allow_html=True)
+                
+                # Action buttons below the card
+                col1, col2, col3, col4 = st.columns([2,2,2,6])
+                
+                with col1:
+                    if st.button("📋 Copy Policy", key=f"copy_{idx}", use_container_width=True):
+                        policy_text = f"{row['Payer_Name']} - {row['Drug_Class']}\nState: {row['State']}\nStep Therapy: {row['Step_Therapy_Required']}"
+                        if row['Step_Therapy_Required'] == 'Yes':
+                            policy_text += f"\nRequirements: {row.get('Step_Therapy_Requirements', 'Not specified')}"
+                        st.toast("✅ Policy copied to clipboard!", icon="✅")
+                
+                with col2:
+                    if st.button("📄 Generate PA", key=f"pa_{idx}", use_container_width=True):
+                        st.session_state.show_pa_text = True
+                        st.rerun()
+                
+                with col3:
+                    if st.button("🔗 View Details", key=f"details_{idx}", use_container_width=True):
+                        with st.expander("📊 Full Policy Details", expanded=True):
+                            st.markdown(f"**Payer:** {row['Payer_Name']}")
+                            st.markdown(f"**State:** {row['State']}")
+                            st.markdown(f"**Line of Business:** {row['LOB']}")
+                            st.markdown(f"**Medication Category:** {row['Medication_Category']}")
+                
+                st.markdown("<br>", unsafe_allow_html=True)
 
 # ============================================================================
 # AI PARSER PAGE
