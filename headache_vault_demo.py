@@ -319,10 +319,6 @@ Return ONLY the JSON object with all fields filled in. If you see ANY mention of
         # Extract JSON from response
         response_text = message.content[0].text
         
-        # Debug: Show raw response
-        st.write("🔍 DEBUG - Raw AI Response:")
-        st.code(response_text, language="json")
-        
         # Try to parse JSON
         try:
             parsed = json.loads(response_text)
@@ -350,11 +346,6 @@ Return ONLY the JSON object with all fields filled in. If you see ANY mention of
                 # Update with matched name
                 if exact_match:
                     parsed['payer'] = exact_match
-                    st.write(f"✅ DEBUG - Payer matched: '{payer_input}' → '{exact_match}'")
-                else:
-                    st.write(f"❌ DEBUG - No payer match found for: '{payer_input}'")
-            else:
-                st.write("⚠️ DEBUG - No payer in AI response")
             
             return parsed
         except:
