@@ -1200,25 +1200,16 @@ elif st.session_state.current_page == 'Search':
                     # PCP MODE: Show additional documentation guidance
                     if st.session_state.user_mode == 'pcp' and not has_missing_info:
                         with st.expander("📘 New to step therapy documentation? Click here for tips", expanded=False):
+                            st.markdown("#### 📝 Documentation Best Practices")
+                            st.markdown("**What payers want to see:**")
                             st.markdown("""
-                            <div class="learning-moment">
-                                <div class="learning-moment-title">📝 Documentation Best Practices</div>
-                                <div class="learning-moment-content">
-                                    <strong>What payers want to see:</strong>
-                                    <ul>
-                                        <li><strong>Specific medication names</strong> - Not "tried several medications"</li>
-                                        <li><strong>Exact dosages</strong> - "Topiramate 100mg BID" not "adequate dose"</li>
-                                        <li><strong>Duration with dates</strong> - "60 days (Jan 1 - Mar 1, 2026)"</li>
-                                        <li><strong>Outcome</strong> - "Failed due to [side effect/inefficacy]"</li>
-                                    </ul>
-                                    
-                                    <strong>Example documentation:</strong><br>
-                                    <em>"Patient completed 60-day trial of topiramate 100mg BID from 11/1/25 to 12/31/25. 
-                                    Treatment was discontinued due to cognitive side effects (word-finding difficulty) 
-                                    despite dose titration. Headache frequency remained at 14 days/month."</em>
-                                </div>
-                            </div>
-                            """, unsafe_allow_html=True)
+- **Specific medication names** — Not "tried several medications"
+- **Exact dosages** — "Topiramate 100mg BID" not "adequate dose"  
+- **Duration with dates** — "60 days (Jan 1 - Mar 1, 2026)"
+- **Outcome** — "Failed due to [side effect/inefficacy]"
+                            """)
+                            st.markdown("**Example documentation:**")
+                            st.info('"Patient completed 60-day trial of topiramate 100mg BID from 11/1/25 to 12/31/25. Treatment was discontinued due to cognitive side effects (word-finding difficulty) despite dose titration. Headache frequency remained at 14 days/month."')
                     
                     st.markdown("</div>", unsafe_allow_html=True)
                 else:
