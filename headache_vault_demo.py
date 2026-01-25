@@ -1220,88 +1220,55 @@ elif st.session_state.current_page == 'Search':
     st.markdown("<br>", unsafe_allow_html=True)
     
     # ============================================================================
-    # SIDEBAR FILTERS
+    # SIDEBAR FILTERS (uses SidebarHelper for defaults from PatientContext)
     # ============================================================================
-    # Sidebar filters
     st.sidebar.header("🔍 Search Filters")
 
     # State selection
-
-    # State selection - use parsed data if available
     states = sorted(db_b['State'].unique().tolist())
-    default_state = 'PA'
-    if 'parsed_data' in st.session_state and st.session_state.parsed_data.get('state'):
-        parsed_state = st.session_state.parsed_data['state'].upper()
-        if parsed_state in states:
-            default_state = parsed_state
-    
     selected_state = st.sidebar.selectbox(
         "State",
         options=states,
-        index=states.index(default_state) if default_state in states else 0,
+        index=SidebarHelper.get_state_index(states),
         key="sidebar_state"
     )
 
-    # Filter payers by state
+    # Payer selection
     state_payers = db_b[db_b['State'] == selected_state]['Payer_Name'].unique().tolist()
-    
-    # Payer selection - use parsed data if available
-    default_payer_idx = 0
-    if 'parsed_data' in st.session_state and st.session_state.parsed_data.get('payer'):
-        parsed_payer = st.session_state.parsed_data['payer']
-        for i, p in enumerate(['All Payers'] + sorted(state_payers)):
-            if parsed_payer.lower() in p.lower() or p.lower() in parsed_payer.lower():
-                default_payer_idx = i
-                break
-    
+    payer_options = ['All Payers'] + sorted(state_payers)
     selected_payer = st.sidebar.selectbox(
         "Payer", 
-        options=['All Payers'] + sorted(state_payers),
-        index=default_payer_idx,
+        options=payer_options,
+        index=SidebarHelper.get_payer_index(payer_options),
         key="sidebar_payer"
     )
     
-    # Drug class selection - use parsed data if available
+    # Drug class selection
     state_drug_classes = sorted(db_b[db_b['State'] == selected_state]['Drug_Class'].unique().tolist())
-    default_drug_idx = 0
-    if 'parsed_data' in st.session_state and st.session_state.parsed_data.get('drug_class'):
-        parsed_drug = st.session_state.parsed_data['drug_class']
-        if parsed_drug in state_drug_classes:
-            default_drug_idx = state_drug_classes.index(parsed_drug)
-    
     selected_drug = st.sidebar.selectbox(
         "Medication Class",
         options=state_drug_classes,
-        index=default_drug_idx,
+        index=SidebarHelper.get_drug_index(state_drug_classes),
         help=f"{len(state_drug_classes)} drug classes available in {selected_state}",
         key="sidebar_drug"
     )
     
-    # Headache type - use parsed data if available
+    # Headache type
     headache_options = ["Chronic Migraine", "Episodic Migraine", "Cluster Headache"]
-    default_headache_idx = 0
-    if 'parsed_data' in st.session_state and st.session_state.parsed_data.get('diagnosis'):
-        parsed_diag = st.session_state.parsed_data['diagnosis']
-        if parsed_diag in headache_options:
-            default_headache_idx = headache_options.index(parsed_diag)
-    
     headache_type = st.sidebar.radio(
         "Headache Type",
         options=headache_options,
-        index=default_headache_idx,
+        index=SidebarHelper.get_headache_index(headache_options),
         key="sidebar_headache"
     )
 
-    # Patient age (for pediatric overrides) - sync from parsed data
-    default_age = 35
-    if 'parsed_data' in st.session_state and st.session_state.parsed_data.get('age'):
-        default_age = int(st.session_state.parsed_data['age'])
-    
+    # Patient age (from PatientContext)
+    ctx = SessionStateManager.get_context()
     patient_age = st.sidebar.number_input(
         "Patient Age (years)",
         min_value=1,
         max_value=120,
-        value=default_age,
+        value=ctx.age,
         help="Used to check pediatric prescribing restrictions",
         key="sidebar_age"
     )
