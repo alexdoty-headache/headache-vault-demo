@@ -1600,13 +1600,26 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
                     # Success celebration
                     st.balloons()
                     st.success("🎉 **Note Parsed Successfully!** Extracted patient data in 2.3 seconds.")
+                    # Auto-scroll to results
+                    # Scroll handled by anchor below
     
     # Display parsed data if available
     if 'parsed_data' in st.session_state:
         parsed = st.session_state.parsed_data
         
         st.markdown("---")
+        st.markdown('<div id="parsed-results"></div>', unsafe_allow_html=True)
         st.markdown("### 📊 Extracted Information")
+        
+        # Auto-scroll to this section
+        st.markdown("""
+        <script>
+            const element = document.getElementById('parsed-results');
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        </script>
+        """, unsafe_allow_html=True)
         
         col1, col2, col3 = st.columns(3)
         
