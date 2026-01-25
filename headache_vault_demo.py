@@ -1457,9 +1457,7 @@ elif st.session_state.current_page == 'Search':
                             st.markdown("**Example documentation:**")
                             st.info('"Patient completed 60-day trial of topiramate 100mg BID from 11/1/25 to 12/31/25. Treatment was discontinued due to cognitive side effects (word-finding difficulty) despite dose titration. Headache frequency remained at 14 days/month."')
                     
-                    st.markdown("</div>", unsafe_allow_html=True)
-                else:
-                    
+
                     # ================================================================
                     # CRITERIA MET CHECKLIST - Show if patient meets requirements
                     # ================================================================
@@ -1496,6 +1494,8 @@ elif st.session_state.current_page == 'Search':
                             else:
                                 st.warning("⚠️ **Some requirements may not be documented.** Review clinical note or document missing trials.")
                     
+                    st.markdown("</div>", unsafe_allow_html=True)
+                else:
                     st.markdown("""
                     <div class="policy-section">
                         <div style="background: #F0FFF4; padding: 1rem; border-radius: 8px; border-left: 4px solid #10B981;">
