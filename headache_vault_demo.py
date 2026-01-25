@@ -1361,8 +1361,7 @@ elif st.session_state.current_page == 'Search':
                 query = query[query['Drug_Class'].str.contains('Cluster', case=False, na=False)]
             elif headache_type == "Chronic Migraine":
                 query = query[query['Medication_Category'].str.contains('Chronic|Preventive', case=False, na=False)]
-            else:  # Episodic
-                query = query[~query['Medication_Category'].str.contains('Chronic', case=False, na=False)]
+            # Note: Episodic migraine patients can still use preventives, so we don't filter them out
             
             st.session_state.search_results = query
             st.session_state.patient_age = patient_age
@@ -1802,8 +1801,8 @@ if st.session_state.current_page == 'Search' and st.session_state.show_pa_text a
         row = results.iloc[0]
         
         # Get values safely
-        diag = headache_type if 'headache_type' in dir() else "Chronic Migraine"
-        age = patient_age if 'patient_age' in dir() else 35
+        diag = st.session_state.parsed_data.get('diagnosis', headache_type) if 'parsed_data' in st.session_state else (headache_type if 'headache_type' in dir() else "Chronic Migraine")
+        age = st.session_state.get('patient_age', patient_age if 'patient_age' in dir() else 35)
         drug = selected_drug if 'selected_drug' in dir() else row['Drug_Class']
         state = selected_state if 'selected_state' in dir() else row['State']
         
