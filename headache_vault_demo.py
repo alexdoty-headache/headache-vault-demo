@@ -733,6 +733,88 @@ def get_step_therapy_details(row):
 
 def send_lead_to_monday(name, email, practice, state, payer, drug_class, notes):
     """Send lead data to Monday.com CRM board"""
+
+
+def check_criteria_met(step_requirements, prior_medications, diagnosis):
+    """
+    Check if patient's documented history meets step therapy requirements.
+    Returns list of (requirement, met_status, details) tuples.
+    """
+    criteria_status = []
+    step_req_lower = step_requirements.lower() if step_requirements else ''
+    prior_meds_lower = [m.lower() for m in prior_medications] if prior_medications else []
+    
+    # Common preventive medication classes
+    beta_blockers = ['propranolol', 'metoprolol', 'atenolol', 'nadolol', 'timolol']
+    anticonvulsants = ['topiramate', 'topamax', 'valproate', 'depakote', 'divalproex', 'gabapentin']
+    antidepressants = ['amitriptyline', 'nortriptyline', 'venlafaxine', 'duloxetine', 'effexor', 'cymbalta']
+    ccbs = ['verapamil', 'flunarizine']
+    triptans = ['sumatriptan', 'rizatriptan', 'eletriptan', 'zolmitriptan', 'naratriptan', 'frovatriptan', 'almotriptan']
+    
+    # Check for oral preventive requirements (CGRP mAbs)
+    if '2 oral preventive' in step_req_lower or ('2' in step_req_lower and 'preventive' in step_req_lower) or 'conventional oral' in step_req_lower:
+        classes_tried = 0
+        meds_found = []
+        
+        for med in prior_meds_lower:
+            if any(bb in med for bb in beta_blockers) and 'Beta-blocker' not in [m.split(' (')[0] for m in meds_found]:
+                classes_tried += 1
+                meds_found.append(f"Beta-blocker ({med.title()})")
+            elif any(ac in med for ac in anticonvulsants) and 'Anticonvulsant' not in [m.split(' (')[0] for m in meds_found]:
+                classes_tried += 1
+                meds_found.append(f"Anticonvulsant ({med.title()})")
+            elif any(ad in med for ad in antidepressants) and 'Antidepressant' not in [m.split(' (')[0] for m in meds_found]:
+                classes_tried += 1
+                meds_found.append(f"Antidepressant ({med.title()})")
+            elif any(ccb in med for ccb in ccbs) and 'CCB' not in [m.split(' (')[0] for m in meds_found]:
+                classes_tried += 1
+                meds_found.append(f"CCB ({med.title()})")
+        
+        if classes_tried >= 2:
+            criteria_status.append(("≥2 oral preventive classes", True, f"{', '.join(meds_found[:3])}"))
+        elif classes_tried == 1:
+            criteria_status.append(("≥2 oral preventive classes", False, f"Only 1 class: {meds_found[0]}"))
+        else:
+            criteria_status.append(("≥2 oral preventive classes", False, "No oral preventives documented"))
+    
+    # Check for triptan requirements (Gepants)
+    if 'triptan' in step_req_lower:
+        triptans_tried = []
+        for med in prior_meds_lower:
+            for t in triptans:
+                if t in med and t.title() not in triptans_tried:
+                    triptans_tried.append(t.title())
+        
+        if '2' in step_req_lower and 'triptan' in step_req_lower:
+            if len(triptans_tried) >= 2:
+                criteria_status.append(("≥2 triptans tried", True, f"{', '.join(triptans_tried[:2])}"))
+            elif len(triptans_tried) == 1:
+                criteria_status.append(("≥2 triptans tried", False, f"Only 1: {triptans_tried[0]}"))
+            else:
+                criteria_status.append(("≥2 triptans tried", False, "No triptans documented"))
+    
+    # Check for verapamil/lithium requirements (Cluster)
+    if 'verapamil' in step_req_lower or 'lithium' in step_req_lower:
+        verapamil_tried = any('verapamil' in med for med in prior_meds_lower)
+        lithium_tried = any('lithium' in med for med in prior_meds_lower)
+        
+        if ' or ' in step_req_lower:  # verapamil OR lithium
+            if verapamil_tried or lithium_tried:
+                med_name = 'Verapamil' if verapamil_tried else 'Lithium'
+                criteria_status.append(("Verapamil OR lithium failure", True, f"{med_name} trial documented"))
+            else:
+                criteria_status.append(("Verapamil OR lithium failure", False, "Neither documented"))
+        elif ' and ' in step_req_lower:  # verapamil AND lithium
+            if verapamil_tried and lithium_tried:
+                criteria_status.append(("Verapamil AND lithium failure", True, "Both documented"))
+            else:
+                missing = []
+                if not verapamil_tried: missing.append("verapamil")
+                if not lithium_tried: missing.append("lithium")
+                criteria_status.append(("Verapamil AND lithium failure", False, f"Missing: {', '.join(missing)}"))
+    
+    return criteria_status
+
     
     # Get API key from secrets
     try:
@@ -1377,6 +1459,43 @@ elif st.session_state.current_page == 'Search':
                     
                     st.markdown("</div>", unsafe_allow_html=True)
                 else:
+                    
+                    # ================================================================
+                    # CRITERIA MET CHECKLIST - Show if patient meets requirements
+                    # ================================================================
+                    if 'parsed_data' in st.session_state and st.session_state.parsed_data.get('prior_medications'):
+                        prior_meds = st.session_state.parsed_data.get('prior_medications', [])
+                        diagnosis = st.session_state.parsed_data.get('diagnosis', '')
+                        
+                        criteria_results = check_criteria_met(step_req, prior_meds, diagnosis)
+                        
+                        if criteria_results:
+                            st.markdown("---")
+                            st.markdown("##### ✅ Patient Criteria Status (from clinical note)")
+                            
+                            all_met = all(met for _, met, _ in criteria_results)
+                            
+                            for requirement, met, details in criteria_results:
+                                if met:
+                                    st.markdown(f"""
+                                    <div style="background: #D4EDDA; padding: 0.75rem 1rem; border-radius: 8px; margin: 0.5rem 0; border-left: 4px solid #28A745;">
+                                        <span style="color: #155724; font-weight: 600;">✓ {requirement}</span><br>
+                                        <small style="color: #155724;">{details}</small>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                                else:
+                                    st.markdown(f"""
+                                    <div style="background: #FFF3CD; padding: 0.75rem 1rem; border-radius: 8px; margin: 0.5rem 0; border-left: 4px solid #FFC107;">
+                                        <span style="color: #856404; font-weight: 600;">⚠️ {requirement}</span><br>
+                                        <small style="color: #856404;">{details}</small>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                            
+                            if all_met:
+                                st.success("🎉 **Patient meets all step therapy requirements!** PA likely to be approved.")
+                            else:
+                                st.warning("⚠️ **Some requirements may not be documented.** Review clinical note or document missing trials.")
+                    
                     st.markdown("""
                     <div class="policy-section">
                         <div style="background: #F0FFF4; padding: 1rem; border-radius: 8px; border-left: 4px solid #10B981;">
