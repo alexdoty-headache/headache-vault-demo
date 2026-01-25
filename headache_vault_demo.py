@@ -3,6 +3,7 @@ import pandas as pd
 import json
 import requests
 from datetime import datetime
+from data_flow import SessionStateManager, SidebarHelper, SearchService, PAGenerator
 
 # Page configuration
 st.set_page_config(
@@ -885,29 +886,8 @@ def check_criteria_met(step_requirements, prior_medications, diagnosis):
     except Exception as e:
         return False, str(e)
 
-# Initialize session state
-if 'search_results' not in st.session_state:
-    st.session_state.search_results = None
-if 'show_pa_text' not in st.session_state:
-    st.session_state.show_pa_text = False
-if 'show_moh_check' not in st.session_state:
-    st.session_state.show_moh_check = False
-if 'current_page' not in st.session_state:
-    st.session_state.current_page = 'Dashboard'
-if 'show_success' not in st.session_state:
-    st.session_state.show_success = False
-# Persona-based guidance
-if 'user_mode' not in st.session_state:
-    st.session_state.user_mode = 'pcp'  # 'pcp' = guided mode, 'specialist' = fast mode
-if 'pa_count' not in st.session_state:
-    st.session_state.pa_count = 0  # Track PAs for progressive disclosure
-if 'show_learning_tips' not in st.session_state:
-    st.session_state.show_learning_tips = True  # Show tips by default for new users
-# Lead capture
-if 'lead_submitted' not in st.session_state:
-    st.session_state.lead_submitted = False
-if 'lead_email' not in st.session_state:
-    st.session_state.lead_email = ""
+# Initialize session state (unified data flow)
+SessionStateManager.initialize()
 
 # Load data
 db_a, db_b, db_c, db_e, db_f, icd10, therapeutic, otc = load_databases()
@@ -1600,7 +1580,9 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
                 parsed_data = parse_clinical_note(clinical_note, db_a, db_b)
                 
                 if parsed_data:
-                    st.session_state.parsed_data = parsed_data
+                    # Update unified patient context
+                    SessionStateManager.set_from_ai_parse(parsed_data)
+                    st.session_state.parsed_data = parsed_data  # Keep for backward compatibility
                     # Success celebration
                     st.balloons()
                     st.success("🎉 **Note Parsed Successfully!** Extracted patient data in 2.3 seconds.")
