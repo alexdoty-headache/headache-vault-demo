@@ -126,18 +126,24 @@ st.markdown("""
         border-radius: 12px;
         color: white;
         text-align: center;
-        box-shadow: 0 4px 6px rgba(75, 0, 130, 0.1);
+        box-shadow: 0 4px 6px rgba(75, 0, 130, 0.3);
     }
     .stat-number {
-        font-size: 2.5rem;
-        font-weight: 700;
+        font-size: 2.75rem;
+        font-weight: 800;
         font-family: 'Inter', sans-serif;
         margin: 0;
+        color: white !important;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
     }
     .stat-label {
-        font-size: 0.9rem;
-        opacity: 0.9;
+        font-size: 1rem;
+        font-weight: 600;
         margin-top: 0.5rem;
+        color: white !important;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
     }
     
     /* Policy Result Cards */
@@ -454,10 +460,13 @@ st.markdown("""
     /* STAT CARDS - Force white text on purple background */
     .stat-card,
     .stat-card *,
-    .stat-card div,
+    .stat-card div {
+        color: white !important;
+    }
     .stat-card .stat-number,
     .stat-card .stat-label {
         color: white !important;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.25) !important;
     }
     
     /* Other exceptions */
