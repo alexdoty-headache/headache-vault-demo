@@ -721,6 +721,219 @@ def load_databases():
     
     return db_a, db_b, db_c, db_e, db_f, icd10, therapeutic, otc
 
+# ============================================================================
+# NEW: SEARCH HELPER FUNCTIONS WITH CASCADING FALLBACK
+# ============================================================================
+
+def search_policies_with_fallback(state, payer, drug_class, headache_type, db_b):
+    """
+    Search for payer policies with intelligent fallbacks.
+    Returns: (results_df, match_type, message)
+    match_type: 'exact', 'state_drug', 'national', 'universal', 'none'
+    """
+    state = state.upper().strip() if state else None
+    
+    # ATTEMPT 1: Exact match (State + Payer + Drug Class)
+    if payer and payer != 'All Payers':
+        exact_results = db_b[
+            (db_b['State'] == state) & 
+            (db_b['Payer_Name'] == payer) & 
+            (db_b['Drug_Class'] == drug_class)
+        ]
+        exact_results = apply_headache_filter(exact_results, headache_type)
+        if not exact_results.empty:
+            return exact_results, 'exact', f"✅ Found exact policy for {payer} in {state}"
+    
+    # ATTEMPT 2: State + Drug Class (any payer in that state)
+    state_drug_results = db_b[
+        (db_b['State'] == state) & 
+        (db_b['Drug_Class'] == drug_class)
+    ]
+    state_drug_results = apply_headache_filter(state_drug_results, headache_type)
+    if not state_drug_results.empty:
+        if payer and payer != 'All Payers':
+            msg = f"⚠️ No exact policy for {payer}. Showing {len(state_drug_results)} similar policies in {state}."
+        else:
+            msg = f"✅ Found {len(state_drug_results)} policies for {drug_class} in {state}"
+        return state_drug_results, 'state_drug', msg
+    
+    # ATTEMPT 3: National policies (State = 'ALL')
+    national_results = db_b[
+        (db_b['State'] == 'ALL') & 
+        (db_b['Drug_Class'] == drug_class)
+    ]
+    national_results = apply_headache_filter(national_results, headache_type)
+    if not national_results.empty:
+        return national_results, 'national', f"📋 Using national {drug_class} policy (no {state}-specific policy found)"
+    
+    # ATTEMPT 4: Broaden drug class search
+    broader_results = db_b[
+        (db_b['State'].isin([state, 'ALL'])) & 
+        (db_b['Drug_Class'].str.contains(drug_class.split()[0], case=False, na=False))
+    ]
+    broader_results = apply_headache_filter(broader_results, headache_type)
+    if not broader_results.empty:
+        return broader_results, 'broader', f"📋 Showing related {drug_class.split()[0]} policies"
+    
+    # ATTEMPT 5: Universal template (last resort)
+    universal = get_universal_template(drug_class, state, headache_type)
+    if universal is not None:
+        return universal, 'universal', f"📋 Using universal {drug_class} template (specific policy not in database)"
+    
+    return pd.DataFrame(), 'none', f"❌ No policies found for {drug_class} in {state}"
+
+
+def apply_headache_filter(df, headache_type):
+    """
+    Apply headache type filter WITHOUT being overly aggressive.
+    Returns filtered dataframe.
+    """
+    if df.empty:
+        return df
+    
+    if headache_type == "Cluster Headache":
+        # For cluster, ONLY show cluster-specific entries
+        cluster_mask = (
+            df['Drug_Class'].str.contains('Cluster', case=False, na=False) |
+            df['Medication_Category'].str.contains('Cluster', case=False, na=False)
+        )
+        filtered = df[cluster_mask]
+        # If no cluster-specific, return original (don't filter out everything)
+        return filtered if not filtered.empty else df
+    
+    elif headache_type == "Chronic Migraine":
+        # For chronic migraine, prefer Preventive but don't exclude Acute
+        chronic_mask = (
+            df['Medication_Category'].str.contains('Chronic|Preventive', case=False, na=False) |
+            df['Drug_Class'].str.contains('Botox|CGRP mAb', case=False, na=False)
+        )
+        filtered = df[chronic_mask]
+        return filtered if not filtered.empty else df
+    
+    else:  # Episodic Migraine
+        # Episodic can use acute gepants and preventive mAbs
+        # Only exclude Botox (chronic-only per FDA)
+        episodic_mask = ~df['Drug_Class'].str.contains('Botox', case=False, na=False)
+        filtered = df[episodic_mask]
+        return filtered if not filtered.empty else df
+
+
+def get_universal_template(drug_class, state, headache_type):
+    """Return a universal template DataFrame when no specific policy exists."""
+    
+    if 'CGRP mAb' in drug_class or drug_class in ['CGRP mAbs', 'Preventive']:
+        template = {
+            'State': state,
+            'Payer_Name': 'Universal Template (AHS 2024 Guidelines)',
+            'Payer_Type': 'Template',
+            'LOB': 'All',
+            'Drug_Class': drug_class,
+            'Medication_Category': 'Preventive',
+            'Step_Therapy_Required': 'Yes',
+            'Step_1_Requirement': '≥2 oral preventive classes (beta-blockers, anticonvulsants, TCAs, or SNRIs) at therapeutic doses',
+            'Step_1_Duration': '≥8 weeks each (or documented intolerance)',
+            'Step_2_Requirement': 'N/A',
+            'Step_2_Duration': 'N/A',
+            'Quantity_Limit': 'Per manufacturer dosing',
+            'Contraindication_Bypass': 'Yes - CV contraindication, teratogenic risk, cognitive impairment',
+            'Gold_Card_Available': 'Check state law',
+            'Gold_Card_Threshold': 'Varies by state',
+            'Vault_Denial_Code': 'DENY-STEP-002',
+        }
+    elif 'Gepant' in drug_class or 'Acute' in drug_class:
+        template = {
+            'State': state,
+            'Payer_Name': 'Universal Template (AHS 2021 Guidelines)',
+            'Payer_Type': 'Template',
+            'LOB': 'All',
+            'Drug_Class': drug_class,
+            'Medication_Category': 'Acute',
+            'Step_Therapy_Required': 'Yes',
+            'Step_1_Requirement': '≥2 triptans from different chemical families (or documented contraindication)',
+            'Step_1_Duration': '≥4 weeks each with documented inadequate response',
+            'Step_2_Requirement': 'N/A',
+            'Step_2_Duration': 'N/A',
+            'Quantity_Limit': '8-16 tablets per 30 days (varies by payer)',
+            'Contraindication_Bypass': 'Yes - CV disease, uncontrolled HTN, hemiplegic/basilar migraine',
+            'Gold_Card_Available': 'Check state law',
+            'Gold_Card_Threshold': 'Varies by state',
+            'Vault_Denial_Code': 'DENY-STEP-001',
+        }
+    elif 'Botox' in drug_class:
+        template = {
+            'State': state,
+            'Payer_Name': 'Universal Template (LCD L38809)',
+            'Payer_Type': 'Template',
+            'LOB': 'All',
+            'Drug_Class': drug_class,
+            'Medication_Category': 'Chronic Migraine Only',
+            'Step_Therapy_Required': 'Yes',
+            'Step_1_Requirement': '≥2 oral preventive classes at therapeutic doses',
+            'Step_1_Duration': '≥8 weeks each',
+            'Step_2_Requirement': 'N/A',
+            'Step_2_Duration': 'N/A',
+            'Quantity_Limit': '⚠️ Chronic Migraine ONLY (≥15 HA days/mo, ≥8 migraine features) - Episodic NOT covered',
+            'Contraindication_Bypass': 'Yes - oral preventive contraindications',
+            'Gold_Card_Available': 'Check state law',
+            'Gold_Card_Threshold': 'Varies by state',
+            'Vault_Denial_Code': 'DENY-STEP-002',
+        }
+    elif 'Cluster' in drug_class:
+        template = {
+            'State': state,
+            'Payer_Name': 'Universal Template (AHS Cluster Guidelines)',
+            'Payer_Type': 'Template',
+            'LOB': 'All',
+            'Drug_Class': drug_class,
+            'Medication_Category': 'Cluster Headache Prevention',
+            'Step_Therapy_Required': 'Yes',
+            'Step_1_Requirement': 'Failure of verapamil and/or lithium at therapeutic doses',
+            'Step_1_Duration': '≥2-4 weeks (cluster trials shorter than migraine)',
+            'Step_2_Requirement': 'N/A',
+            'Step_2_Duration': 'N/A',
+            'Quantity_Limit': '⚠️ Emgality 300mg monthly - ONLY FDA-approved CGRP for cluster (episodic only)',
+            'Contraindication_Bypass': 'Yes - cardiac (verapamil), renal/thyroid (lithium)',
+            'Gold_Card_Available': 'N/A for cluster',
+            'Gold_Card_Threshold': 'N/A',
+            'Vault_Denial_Code': 'DENY-CLUSTER-001',
+        }
+    else:
+        template = {
+            'State': state,
+            'Payer_Name': 'Universal Template',
+            'Payer_Type': 'Template',
+            'LOB': 'All',
+            'Drug_Class': drug_class,
+            'Medication_Category': 'Contact payer',
+            'Step_Therapy_Required': 'Likely Yes',
+            'Step_1_Requirement': 'Contact payer for specific requirements',
+            'Step_1_Duration': 'Varies by payer',
+            'Step_2_Requirement': 'N/A',
+            'Step_2_Duration': 'N/A',
+            'Quantity_Limit': 'Varies by payer',
+            'Contraindication_Bypass': 'Document contraindications',
+            'Gold_Card_Available': 'Check state law',
+            'Gold_Card_Threshold': 'Varies',
+            'Vault_Denial_Code': 'DENY-STEP-002',
+        }
+    
+    return pd.DataFrame([template])
+
+
+def display_match_type_indicator(match_type, message):
+    """Display visual indicator of match type."""
+    if match_type == 'exact':
+        st.success(message)
+    elif match_type in ['state_drug', 'national', 'broader']:
+        st.warning(message)
+    elif match_type == 'universal':
+        st.info(message + "\n\n💡 **Tip:** Contact the payer's PA department for specific requirements.")
+    elif match_type == 'demo':
+        st.info(message)
+    else:
+        st.error(message)
+
+
 def send_lead_to_monday(name, email, practice, state, payer, drug_class, notes):
     """Send lead data to Monday.com CRM board"""
     
@@ -1209,43 +1422,62 @@ elif st.session_state.current_page == 'Search':
 
     search_clicked = st.sidebar.button("🔎 Search Policies", type="primary", use_container_width=True)
 
+
     # Main content area - show results from either search method
     if (search_clicked or st.session_state.search_results is not None) or st.session_state.get('show_results', False):
         if search_clicked:
-            # Perform search from sidebar
-            query = db_b[db_b['State'] == selected_state]
+            # =====================================================================
+            # NEW: Use fallback search logic instead of aggressive filtering
+            # =====================================================================
+            results, match_type, match_message = search_policies_with_fallback(
+                state=selected_state,
+                payer=selected_payer,
+                drug_class=selected_drug,
+                headache_type=headache_type,
+                db_b=db_b
+            )
             
-            if selected_payer != 'All Payers':
-                query = query[query['Payer_Name'] == selected_payer]
-            
-            query = query[query['Drug_Class'] == selected_drug]
-            
-            # Filter by headache type
-            if headache_type == "Cluster Headache":
-                query = query[query['Drug_Class'].str.contains('Cluster', case=False, na=False)]
-            elif headache_type == "Chronic Migraine":
-                query = query[query['Medication_Category'].str.contains('Chronic|Preventive', case=False, na=False)]
-            else:  # Episodic
-                query = query[~query['Medication_Category'].str.contains('Chronic', case=False, na=False)]
-            
-            st.session_state.search_results = query
+            st.session_state.search_results = results
+            st.session_state.match_type = match_type
+            st.session_state.match_message = match_message
             st.session_state.patient_age = patient_age
         
         results = st.session_state.search_results
+        match_type = st.session_state.get('match_type', 'exact')
+        match_message = st.session_state.get('match_message', '')
         patient_age_display = st.session_state.get('patient_age', patient_age if 'patient_age' in dir() else 35)
+        
+        # =====================================================================
+        # Display match type indicator for transparency
+        # =====================================================================
+        if match_message:
+            display_match_type_indicator(match_type, match_message)
         
         if len(results) == 0:
             st.warning("⚠️ No policies found for this combination.")
-            st.info("""
-            **Possible reasons:**
-            - This payer may not have a specific policy for this drug class
-            - Preventive gepant policies (Nurtec, Qulipta) are still being audited for some states
-            - Try selecting a different medication class or payer
             
-            **Coverage notes:**
-            - All PA payers have policies for: CGRP mAbs, Botox, Gepants (acute)
-            - Preventive gepant coverage expanding weekly
-            """)
+            st.markdown('''
+            <div style="background: #FFF9E6; padding: 1.5rem; border-radius: 12px; border-left: 4px solid #FFD700; margin: 1rem 0;">
+                <strong style="color: #B8860B; font-size: 1.1rem;">💡 What to do next:</strong>
+                <ol style="color: #5A5A5A; margin-top: 0.75rem; line-height: 1.8;">
+                    <li><strong>Call the payer's PA department</strong> - Ask for their clinical policy bulletin (CPB)</li>
+                    <li><strong>Request step therapy requirements</strong> - Get specific drug names, doses, and trial durations</li>
+                    <li><strong>Document the conversation</strong> - Note the date, representative name, and reference number</li>
+                </ol>
+                <div style="margin-top: 1rem; padding: 0.75rem; background: white; border-radius: 8px;">
+                    <strong>Standard CGRP mAb Requirements (AHS 2024):</strong><br>
+                    <span style="color: #5A5A5A;">≥2 oral preventive classes × ≥8 weeks each, OR documented contraindication</span>
+                </div>
+            </div>
+            ''', unsafe_allow_html=True)
+            
+            # Demo mode fallback - guarantees something always shows
+            if st.checkbox("🎬 Demo Mode: Show sample policy for demonstration", value=False):
+                demo_results = get_universal_template(selected_drug, selected_state, headache_type)
+                st.session_state.search_results = demo_results
+                st.session_state.match_type = 'demo'
+                st.session_state.match_message = '🎬 Demo Mode: Showing sample policy template'
+                st.rerun()
         else:
             # Display summary
             st.markdown("---")
@@ -1258,8 +1490,6 @@ elif st.session_state.current_page == 'Search':
             with col3:
                 requires_step = (results['Step_Therapy_Required'] == 'Yes').sum()
                 st.metric("Require Step Therapy", f"{requires_step}/{len(results)}")
-            
-            # Display each policy as a professional card
             for idx, row in results.iterrows():
                 # Build policy card with container
                 st.markdown(f"""
