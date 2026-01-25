@@ -1164,33 +1164,70 @@ elif st.session_state.current_page == 'Search':
     st.sidebar.header("🔍 Search Filters")
 
     # State selection
+
+    # State selection - use parsed data if available
     states = sorted(db_b['State'].unique().tolist())
+    default_state = 'PA'
+    if 'parsed_data' in st.session_state and st.session_state.parsed_data.get('state'):
+        parsed_state = st.session_state.parsed_data['state'].upper()
+        if parsed_state in states:
+            default_state = parsed_state
+    
     selected_state = st.sidebar.selectbox(
         "State",
         options=states,
-        index=states.index('PA') if 'PA' in states else 0
+        index=states.index(default_state) if default_state in states else 0,
+        key="sidebar_state"
     )
 
     # Filter payers by state
     state_payers = db_b[db_b['State'] == selected_state]['Payer_Name'].unique().tolist()
+    
+    # Payer selection - use parsed data if available
+    default_payer_idx = 0
+    if 'parsed_data' in st.session_state and st.session_state.parsed_data.get('payer'):
+        parsed_payer = st.session_state.parsed_data['payer']
+        for i, p in enumerate(['All Payers'] + sorted(state_payers)):
+            if parsed_payer.lower() in p.lower() or p.lower() in parsed_payer.lower():
+                default_payer_idx = i
+                break
+    
     selected_payer = st.sidebar.selectbox(
-        "Payer",
-        options=['All Payers'] + sorted(state_payers)
+        "Payer", 
+        options=['All Payers'] + sorted(state_payers),
+        index=default_payer_idx,
+        key="sidebar_payer"
     )
-
-    # Drug class selection - filtered by state
+    
+    # Drug class selection - use parsed data if available
     state_drug_classes = sorted(db_b[db_b['State'] == selected_state]['Drug_Class'].unique().tolist())
+    default_drug_idx = 0
+    if 'parsed_data' in st.session_state and st.session_state.parsed_data.get('drug_class'):
+        parsed_drug = st.session_state.parsed_data['drug_class']
+        if parsed_drug in state_drug_classes:
+            default_drug_idx = state_drug_classes.index(parsed_drug)
+    
     selected_drug = st.sidebar.selectbox(
         "Medication Class",
         options=state_drug_classes,
-        help=f"{len(state_drug_classes)} drug classes available in {selected_state}"
+        index=default_drug_idx,
+        help=f"{len(state_drug_classes)} drug classes available in {selected_state}",
+        key="sidebar_drug"
     )
-
-    # Headache type
+    
+    # Headache type - use parsed data if available
+    headache_options = ["Chronic Migraine", "Episodic Migraine", "Cluster Headache"]
+    default_headache_idx = 0
+    if 'parsed_data' in st.session_state and st.session_state.parsed_data.get('diagnosis'):
+        parsed_diag = st.session_state.parsed_data['diagnosis']
+        if parsed_diag in headache_options:
+            default_headache_idx = headache_options.index(parsed_diag)
+    
     headache_type = st.sidebar.radio(
         "Headache Type",
-        options=["Chronic Migraine", "Episodic Migraine", "Cluster Headache"],
-        help="Select the primary diagnosis"
+        options=headache_options,
+        index=default_headache_idx,
+        key="sidebar_headache"
     )
 
     # Patient age (for pediatric overrides)
@@ -1201,7 +1238,6 @@ elif st.session_state.current_page == 'Search':
         value=35,
         help="Used to check pediatric prescribing restrictions"
     )
-
     # Search button
     st.sidebar.markdown("---")
 
