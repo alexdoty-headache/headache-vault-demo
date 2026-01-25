@@ -1312,13 +1312,18 @@ elif st.session_state.current_page == 'Search':
         key="sidebar_headache"
     )
 
-    # Patient age (for pediatric overrides)
+    # Patient age (for pediatric overrides) - sync from parsed data
+    default_age = 35
+    if 'parsed_data' in st.session_state and st.session_state.parsed_data.get('age'):
+        default_age = int(st.session_state.parsed_data['age'])
+    
     patient_age = st.sidebar.number_input(
         "Patient Age (years)",
         min_value=1,
         max_value=120,
-        value=35,
-        help="Used to check pediatric prescribing restrictions"
+        value=default_age,
+        help="Used to check pediatric prescribing restrictions",
+        key="sidebar_age"
     )
     # Search button
     st.sidebar.markdown("---")
