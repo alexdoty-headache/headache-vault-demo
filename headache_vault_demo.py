@@ -903,11 +903,14 @@ Valid drug classes:
 {', '.join(drug_classes)}
 
 Medication name to class mapping:
-- Aimovig, Ajovy, Emgality, erenumab → "CGRP mAbs"
+- Aimovig, Ajovy, Emgality (migraine), erenumab → "CGRP mAbs"
+- Emgality 300mg for CLUSTER HEADACHE → "CGRP mAb (Cluster)" (NOT "CGRP mAbs")
+- If diagnosis is Cluster Headache and medication is Emgality → "CGRP mAb (Cluster)"
 - Ubrelvy, Nurtec ODT, ubrogepant, rimegepant → "Gepants"
 - Qulipta, atogepant → "Qulipta"
 - Botox, onabotulinumtoxinA → "Botox"
 - Vyepti, eptinezumab → "Vyepti"
+- For Cluster Headache prevention → "CGRP mAb (Cluster)" or "Emgality (Cluster)"
 
 Clinical note:
 {note_text}
