@@ -1573,31 +1573,45 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
                 st.rerun()
         
         # Search button with celebration
+        
+        # Search button with celebration
         if st.button("🔎 Search with Extracted Data", type="primary", use_container_width=True):
             # Perform search with parsed data
             query = db_b[db_b['State'] == parsed['state']]
             
             if parsed.get('payer') and parsed['payer'] != 'All Payers':
-                # Try to match payer name flexibly
+                # Try to match payer name - prefer EXACT match first
                 payer_matches = db_b[db_b['State'] == parsed['state']]['Payer_Name'].unique()
                 matched_payer = None
-                for p in payer_matches:
-                    if parsed['payer'].lower() in p.lower() or p.lower() in parsed['payer'].lower():
-                        matched_payer = p
-                        break
+                
+                # First try exact match
+                if parsed['payer'] in payer_matches:
+                    matched_payer = parsed['payer']
+                else:
+                    # Then try flexible matching
+                    for p in payer_matches:
+                        if parsed['payer'].lower() in p.lower() or p.lower() in parsed['payer'].lower():
+                            matched_payer = p
+                            break
+                
                 if matched_payer:
                     query = query[query['Payer_Name'] == matched_payer]
             
             if parsed.get('drug_class'):
                 query = query[query['Drug_Class'] == parsed['drug_class']]
             
-            # Filter by diagnosis
+            # Filter by diagnosis - but DON'T double-filter if drug_class already contains the diagnosis
             if parsed.get('diagnosis') == "Cluster Headache":
-                query = query[query['Drug_Class'].str.contains('Cluster', case=False, na=False)]
+                # Only apply if not already filtered to a cluster drug
+                if parsed.get('drug_class') and 'Cluster' not in parsed.get('drug_class', ''):
+                    query = query[query['Drug_Class'].str.contains('Cluster', case=False, na=False)]
             elif parsed.get('diagnosis') == "Chronic Migraine":
-                query = query[query['Medication_Category'].str.contains('Chronic|Preventive', case=False, na=False)]
-            else:  # Episodic
-                query = query[~query['Medication_Category'].str.contains('Chronic', case=False, na=False)]
+                # Only filter if needed
+                if not query.empty:
+                    chronic_filtered = query[query['Medication_Category'].str.contains('Chronic|Preventive', case=False, na=False)]
+                    if not chronic_filtered.empty:
+                        query = chronic_filtered
+            # Don't filter episodic - too aggressive
             
             st.session_state.search_results = query
             st.session_state.patient_age = parsed.get('age', 35)
