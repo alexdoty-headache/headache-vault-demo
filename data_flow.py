@@ -140,7 +140,7 @@ class SessionStateManager:
         'show_learning_tips': True,
         'clinical_note': '',
         # Legacy compatibility
-        'parsed_data': None,
+        'parsed_data': {},
         'patient_age': 35,
     }
     
