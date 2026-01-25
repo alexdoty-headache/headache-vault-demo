@@ -441,10 +441,10 @@ st.markdown("""
     /* NUCLEAR OPTION - FORCE ALL TEXT VISIBLE */
     /* ===================================================================== */
     
-    /* Force all text elements to be dark EXCEPT primary buttons */
-    p:not(.stButton [kind="primary"] *), 
-    span:not(.stButton [kind="primary"] *), 
-    div:not(.stButton [kind="primary"] *), 
+    /* Force all text elements to be dark EXCEPT primary buttons and stat cards */
+    p:not(.stButton [kind="primary"] *):not(.stat-card *):not(.stat-number):not(.stat-label), 
+    span:not(.stButton [kind="primary"] *):not(.stat-card *):not(.stat-number):not(.stat-label), 
+    div:not(.stButton [kind="primary"] *):not(.stat-card):not(.stat-number):not(.stat-label), 
     label, li, td, th, h1, h2, h3, h4, h5, h6 {
         color: #262730 !important;
     }
@@ -459,16 +459,30 @@ st.markdown("""
     }
     
     /* Except for elements with specific styling */
-    /* STAT CARDS - Force white text on purple background */
+    /* STAT CARDS - Force white/lavender text on purple background */
     .stat-card,
     .stat-card *,
-    .stat-card div {
+    .stat-card div,
+    .stat-card span,
+    .stat-card .stat-number,
+    .stat-card .stat-number span,
+    .stat-card .stat-label,
+    .stat-card .stat-label span,
+    div.stat-card div.stat-number,
+    div.stat-card div.stat-number span,
+    div.stat-card div.stat-label,
+    div.stat-card div.stat-label span {
         color: white !important;
     }
-    .stat-card .stat-number,
-    .stat-card .stat-label {
-        color: white !important;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.25) !important;
+    .stat-number,
+    .stat-number span {
+        color: #FFFFFF !important;
+        text-shadow: 1px 1px 3px rgba(0,0,0,0.4) !important;
+    }
+    .stat-label,
+    .stat-label span {
+        color: #E6E6FA !important;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.3) !important;
     }
     
     /* Other exceptions */
@@ -673,6 +687,20 @@ st.markdown("""
         color: #2C5282;
         font-size: 0.85rem;
         line-height: 1.5;
+    }
+    
+    /* ===================================================================== */
+    /* FINAL STAT CARD OVERRIDE - Highest cascade priority */
+    /* ===================================================================== */
+    .stat-card .stat-number span,
+    div.stat-card div.stat-number span {
+        color: #FFFFFF !important;
+        text-shadow: 1px 1px 3px rgba(0,0,0,0.4) !important;
+    }
+    .stat-card .stat-label span,
+    div.stat-card div.stat-label span {
+        color: #E6E6FA !important;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.3) !important;
     }
 
 </style>
@@ -1008,32 +1036,32 @@ if st.session_state.current_page == 'Dashboard':
     with col1:
         st.markdown("""
         <div class="stat-card" style="background: linear-gradient(135deg, #4B0082 0%, #6A0DAD 100%); padding: 1.5rem; border-radius: 12px; text-align: center; box-shadow: 0 4px 6px rgba(75, 0, 130, 0.3);">
-            <div class="stat-number" style="font-size: 2.75rem; font-weight: 800; color: #FFFFFF !important; text-shadow: 1px 1px 3px rgba(0,0,0,0.3); margin: 0;">752</div>
-            <div class="stat-label" style="font-size: 1rem; font-weight: 600; color: #E6E6FA !important; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 0.5rem;">Payer Policies</div>
+            <div class="stat-number" style="font-size: 2.75rem; font-weight: 800; margin: 0;"><span style="color: #FFFFFF !important; text-shadow: 1px 1px 3px rgba(0,0,0,0.4);">752</span></div>
+            <div class="stat-label" style="font-size: 1rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 0.5rem;"><span style="color: #E6E6FA !important; text-shadow: 1px 1px 2px rgba(0,0,0,0.3);">Payer Policies</span></div>
         </div>
         """, unsafe_allow_html=True)
     
     with col2:
         st.markdown("""
         <div class="stat-card" style="background: linear-gradient(135deg, #4B0082 0%, #6A0DAD 100%); padding: 1.5rem; border-radius: 12px; text-align: center; box-shadow: 0 4px 6px rgba(75, 0, 130, 0.3);">
-            <div class="stat-number" style="font-size: 2.75rem; font-weight: 800; color: #FFFFFF !important; text-shadow: 1px 1px 3px rgba(0,0,0,0.3); margin: 0;">1,088</div>
-            <div class="stat-label" style="font-size: 1rem; font-weight: 600; color: #E6E6FA !important; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 0.5rem;">Payers Covered</div>
+            <div class="stat-number" style="font-size: 2.75rem; font-weight: 800; margin: 0;"><span style="color: #FFFFFF !important; text-shadow: 1px 1px 3px rgba(0,0,0,0.4);">1,088</span></div>
+            <div class="stat-label" style="font-size: 1rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 0.5rem;"><span style="color: #E6E6FA !important; text-shadow: 1px 1px 2px rgba(0,0,0,0.3);">Payers Covered</span></div>
         </div>
         """, unsafe_allow_html=True)
     
     with col3:
         st.markdown("""
         <div class="stat-card" style="background: linear-gradient(135deg, #4B0082 0%, #6A0DAD 100%); padding: 1.5rem; border-radius: 12px; text-align: center; box-shadow: 0 4px 6px rgba(75, 0, 130, 0.3);">
-            <div class="stat-number" style="font-size: 2.75rem; font-weight: 800; color: #FFFFFF !important; text-shadow: 1px 1px 3px rgba(0,0,0,0.3); margin: 0;">50</div>
-            <div class="stat-label" style="font-size: 1rem; font-weight: 600; color: #E6E6FA !important; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 0.5rem;">States</div>
+            <div class="stat-number" style="font-size: 2.75rem; font-weight: 800; margin: 0;"><span style="color: #FFFFFF !important; text-shadow: 1px 1px 3px rgba(0,0,0,0.4);">50</span></div>
+            <div class="stat-label" style="font-size: 1rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 0.5rem;"><span style="color: #E6E6FA !important; text-shadow: 1px 1px 2px rgba(0,0,0,0.3);">States</span></div>
         </div>
         """, unsafe_allow_html=True)
     
     with col4:
         st.markdown("""
         <div class="stat-card" style="background: linear-gradient(135deg, #4B0082 0%, #6A0DAD 100%); padding: 1.5rem; border-radius: 12px; text-align: center; box-shadow: 0 4px 6px rgba(75, 0, 130, 0.3);">
-            <div class="stat-number" style="font-size: 2.75rem; font-weight: 800; color: #FFFFFF !important; text-shadow: 1px 1px 3px rgba(0,0,0,0.3); margin: 0;">8</div>
-            <div class="stat-label" style="font-size: 1rem; font-weight: 600; color: #E6E6FA !important; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 0.5rem;">Drug Classes</div>
+            <div class="stat-number" style="font-size: 2.75rem; font-weight: 800; margin: 0;"><span style="color: #FFFFFF !important; text-shadow: 1px 1px 3px rgba(0,0,0,0.4);">8</span></div>
+            <div class="stat-label" style="font-size: 1rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 0.5rem;"><span style="color: #E6E6FA !important; text-shadow: 1px 1px 2px rgba(0,0,0,0.3);">Drug Classes</span></div>
         </div>
         """, unsafe_allow_html=True)
     
