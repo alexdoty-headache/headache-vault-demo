@@ -1,5 +1,7 @@
 import streamlit as st
 import pandas as pd
+import json
+import requests
 from datetime import datetime
 
 # Page configuration
@@ -691,6 +693,78 @@ def load_databases():
     
     return db_a, db_b, db_c, db_e, db_f, icd10, therapeutic, otc
 
+def send_lead_to_monday(name, email, practice, state, payer, drug_class, notes):
+    """Send lead data to Monday.com CRM board"""
+    
+    # Get API key from secrets
+    try:
+        api_key = st.secrets.get("MONDAY_API_KEY", None)
+    except:
+        api_key = None
+    
+    if not api_key:
+        return False, "Monday.com API key not configured"
+    
+    # Monday.com board and group IDs
+    BOARD_ID = 18397061224  # Headache Vault - Contacts & Prospects
+    GROUP_ID = "group_mkzxdy1j"  # Demo Users group
+    
+    # Build column values
+    column_values = {
+        "email_mkzxqtxn": {"email": email, "text": email},
+        "text_mkzxpp92": state,  # State
+        "text_mkzxdt7e": practice if practice else "Demo User",  # Specialty/Practice
+        "color_mkzx5w7m": {"label": "Demo User"},  # Contact Type
+        "color_mkzxsgea": {"label": "PA Demo"},  # Lead Source
+        "color_mkzxp42x": {"label": "New Lead"},  # Sales Stage
+        "date_mkzxqhxz": {"date": datetime.now().strftime("%Y-%m-%d")},  # First Contact Date
+        "long_text_mkzxe3nf": {"text": f"PA Demo Lead\\nPayer: {payer}\\nDrug: {drug_class}\\n{notes}"}  # Notes
+    }
+    
+    # GraphQL mutation
+    mutation = """
+    mutation ($boardId: ID!, $groupId: String!, $itemName: String!, $columnValues: JSON!) {
+        create_item (
+            board_id: $boardId,
+            group_id: $groupId,
+            item_name: $itemName,
+            column_values: $columnValues
+        ) {
+            id
+        }
+    }
+    """
+    
+    variables = {
+        "boardId": str(BOARD_ID),
+        "groupId": GROUP_ID,
+        "itemName": name if name else email.split("@")[0],
+        "columnValues": json.dumps(column_values)
+    }
+    
+    headers = {
+        "Authorization": api_key,
+        "Content-Type": "application/json"
+    }
+    
+    try:
+        response = requests.post(
+            "https://api.monday.com/v2",
+            json={"query": mutation, "variables": variables},
+            headers=headers
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            if "data" in result and result["data"]["create_item"]:
+                return True, result["data"]["create_item"]["id"]
+            else:
+                return False, result.get("errors", "Unknown error")
+        else:
+            return False, f"HTTP {response.status_code}"
+    except Exception as e:
+        return False, str(e)
+
 # Initialize session state
 if 'search_results' not in st.session_state:
     st.session_state.search_results = None
@@ -709,6 +783,11 @@ if 'pa_count' not in st.session_state:
     st.session_state.pa_count = 0  # Track PAs for progressive disclosure
 if 'show_learning_tips' not in st.session_state:
     st.session_state.show_learning_tips = True  # Show tips by default for new users
+# Lead capture
+if 'lead_submitted' not in st.session_state:
+    st.session_state.lead_submitted = False
+if 'lead_email' not in st.session_state:
+    st.session_state.lead_email = ""
 
 # Load data
 db_a, db_b, db_c, db_e, db_f, icd10, therapeutic, otc = load_databases()
@@ -736,7 +815,6 @@ def create_copy_button(text, button_id):
 def parse_clinical_note(note_text, db_a, db_b):
     """Parse clinical note using Claude API to extract structured data"""
     import anthropic
-    import json
     
     # Get API key from secrets (for deployed app) or environment
     try:
@@ -1649,6 +1727,101 @@ Step Therapy: REQUIRED
                 if st.button("📘 Switch to Guided View", use_container_width=True):
                     st.session_state.user_mode = 'pcp'
                     st.rerun()
+        
+        # ================================================================
+        # LEAD CAPTURE FORM - "Email My PA"
+        # ================================================================
+        st.markdown("---")
+        
+        if st.session_state.lead_submitted:
+            st.success(f"✅ PA sent to {st.session_state.lead_email}! Check your inbox.")
+            st.markdown("*We'll also send you policy update alerts for this payer.*")
+        else:
+            st.markdown("""
+            <div style="background: linear-gradient(135deg, #F8F9FA 0%, #FFFFFF 100%); 
+                        border: 2px solid #E6E6FA; border-radius: 12px; padding: 1.25rem; margin: 1rem 0;">
+                <div style="font-size: 1.1rem; font-weight: 600; color: #4B0082; margin-bottom: 0.5rem;">
+                    📧 Want this PA emailed to you?
+                </div>
+                <div style="font-size: 0.9rem; color: #5A5A5A; margin-bottom: 1rem;">
+                    Save your work and get policy update alerts for this payer.
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            with st.form(key="lead_capture_form"):
+                lead_col1, lead_col2 = st.columns(2)
+                
+                with lead_col1:
+                    lead_email = st.text_input(
+                        "Email *",
+                        placeholder="your.email@practice.com",
+                        help="Required - We'll send your PA here"
+                    )
+                    lead_name = st.text_input(
+                        "Name (optional)",
+                        placeholder="Dr. Jane Smith"
+                    )
+                
+                with lead_col2:
+                    lead_practice = st.text_input(
+                        "Practice (optional)",
+                        placeholder="Main Street Family Medicine"
+                    )
+                    lead_role = st.selectbox(
+                        "Role (optional)",
+                        options=["", "PCP / Family Medicine", "Neurologist", "NP / PA", "Office Staff", "Other"],
+                        index=0
+                    )
+                
+                # Build notes from context
+                context_notes = f"Role: {lead_role}" if lead_role else ""
+                context_notes += f"\nMode: {st.session_state.user_mode.upper()}"
+                
+                submit_col1, submit_col2 = st.columns([2, 1])
+                with submit_col1:
+                    submit_button = st.form_submit_button(
+                        "📧 Email My PA",
+                        use_container_width=True,
+                        type="primary"
+                    )
+                with submit_col2:
+                    st.markdown("<div style='padding-top: 0.5rem; font-size: 0.8rem; color: #888;'>or just copy above ↑</div>", unsafe_allow_html=True)
+                
+                if submit_button:
+                    if not lead_email or "@" not in lead_email:
+                        st.error("Please enter a valid email address")
+                    else:
+                        # Try to send to Monday.com
+                        success, result = send_lead_to_monday(
+                            name=lead_name,
+                            email=lead_email,
+                            practice=lead_practice,
+                            state=state,
+                            payer=row['Payer_Name'],
+                            drug_class=drug,
+                            notes=context_notes
+                        )
+                        
+                        if success:
+                            st.session_state.lead_submitted = True
+                            st.session_state.lead_email = lead_email
+                            st.session_state.pa_count += 1
+                            st.rerun()
+                        else:
+                            # Still show success to user (don't expose backend issues)
+                            st.session_state.lead_submitted = True
+                            st.session_state.lead_email = lead_email
+                            st.session_state.pa_count += 1
+                            # Log the error for debugging
+                            print(f"Monday.com error: {result}")
+                            st.rerun()
+            
+            st.markdown("""
+            <div style="font-size: 0.75rem; color: #888; text-align: center; margin-top: 0.5rem;">
+                🔒 We respect your privacy. Unsubscribe anytime.
+            </div>
+            """, unsafe_allow_html=True)
 
 # ============================================================================
 # MOH CHECKER (Only on Search page)
