@@ -2131,10 +2131,12 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
                     st.balloons()
                     st.success("🎉 **Note Parsed Successfully!** Extracted patient data in 2.3 seconds.")
                     
-                  # Show quality indicator
-                    if collection_state:
+                   # Show quality indicator
+                    if collection_state and hasattr(collection_state, 'get_search_quality_score'):
                         score, desc = collection_state.get_search_quality_score()
                         st.markdown(get_quality_indicator_html(score, desc), unsafe_allow_html=True)
+                    else:
+                        st.info("📊 Data extracted - proceed to Search to find policies.")
                     
                     # Show warning if state is missing
                     if not collection_state.state:
