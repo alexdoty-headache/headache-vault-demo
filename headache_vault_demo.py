@@ -5,6 +5,58 @@ import requests
 from datetime import datetime
 from data_flow import SessionStateManager, SidebarHelper, SearchService, PAGenerator
 
+import streamlit as st
+import pandas as pd
+import json
+import requests
+from datetime import datetime
+from data_flow import SessionStateManager, SidebarHelper, SearchService, PAGenerator
+from enum import Enum
+from dataclasses import dataclass, field
+from typing import Optional, List, Tuple
+
+# ============================================================================
+# GUIDED DATA COLLECTION SYSTEM
+# ============================================================================
+
+class FieldPriority(Enum):
+    """Priority levels for data collection fields."""
+    REQUIRED = "required"      # Must have before search (state)
+    IMPORTANT = "important"    # Strongly recommended (payer, drug)
+    HELPFUL = "helpful"        # Nice to have (diagnosis, age)
+
+@dataclass
+class DataCollectionState:
+    """Tracks what data has been collected and what's missing."""
+    state: Optional[str] = None
+    payer: Optional[str] = None
+    drug_class: Optional[str] = None
+    diagnosis: Optional[str] = None
+    age: Optional[str] = None
+    prior_medications: List[str] = field(default_factory=list)
+    
+    def get_collected_fields(self) -> List[str]:
+        collected = []
+        if self.state: collected.append('state')
+        if self.payer: collected.append('payer')
+        if self.drug_class: collected.append('drug_class')
+        if self.diagnosis: collected.append('diagnosis')
+        if self.age: collected.append('age')
+        if self.prior_medications: collected.append('prior_medications')
+        return collected
+    
+    def get_missing_required_fields(self) -> List[str]:
+        missing = []
+        if not self.state: missing.append('state')
+        return missing
+    
+    def can_proceed_to_search(self) -> bool:
+        return self.state is not None
+    
+    def get_search_quality_score(self) -> Tuple[int, str]:
+        score = 0
+        if self.state: score += 40
+
 # Page configuration
 st.set_page_config(
     page_title="The Headache Vault - PA Automation Demo",
@@ -703,7 +755,34 @@ st.markdown("""
         color: #E6E6FA !important;
         text-shadow: 1px 1px 2px rgba(0,0,0,0.3) !important;
     }
-
+/* Quality indicators for guided data collection */
+.quality-excellent {
+    background: linear-gradient(135deg, #D1FAE5 0%, #A7F3D0 100%);
+    color: #065F46;
+    border: 1px solid #10B981;
+}
+.quality-good {
+    background: linear-gradient(135deg, #DBEAFE 0%, #BFDBFE 100%);
+    color: #1E40AF;
+    border: 1px solid #3B82F6;
+}
+.quality-fair {
+    background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+    color: #92400E;
+    border: 1px solid #F59E0B;
+}
+.quality-limited {
+    background: linear-gradient(135deg, #FEE2E2 0%, #FECACA 100%);
+    color: #991B1B;
+    border: 1px solid #EF4444;
+}
+.required-field-box {
+    background: #FEF2F2;
+    border: 2px solid #DC2626;
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 1rem 0;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -743,6 +822,42 @@ def get_step_therapy_details(row):
     duration = row.get('Step_1_Duration') or row.get('Step_Therapy_Duration') or 'Trial duration not specified'
     return str(requirement), str(duration)
 
+# ============================================================================
+# GUIDED DATA COLLECTION HELPERS
+# ============================================================================
+
+def analyze_parsed_data(parsed_data: dict) -> DataCollectionState:
+    """Convert parsed AI data into a DataCollectionState."""
+    return DataCollectionState(
+        state=parsed_data.get('state'),
+        payer=parsed_data.get('payer'),
+        drug_class=parsed_data.get('drug_class'),
+        diagnosis=parsed_data.get('diagnosis'),
+        age=parsed_data.get('age'),
+        prior_medications=parsed_data.get('prior_medications', [])
+    )
+
+def get_quality_indicator_html(score: int, description: str) -> str:
+    """Generate HTML for quality indicator badge."""
+    if score >= 90:
+        color_class = "quality-excellent"
+        icon = "🎯"
+    elif score >= 70:
+        color_class = "quality-good"
+        icon = "✅"
+    elif score >= 50:
+        color_class = "quality-fair"
+        icon = "⚠️"
+    else:
+        color_class = "quality-limited"
+        icon = "📊"
+    
+    return f'''
+    <div class="{color_class}" style="padding: 0.75rem 1rem; border-radius: 8px; margin: 1rem 0; display: inline-block;">
+        <span style="font-size: 1.1rem;">{icon}</span>
+        <strong>Search Quality: {score}%</strong> — {description}
+    </div>
+    '''
 
 # ============================================================================
 # NATIONAL FALLBACK SEARCH - Added Jan 2026
@@ -1037,6 +1152,10 @@ def check_criteria_met(step_requirements, prior_medications, diagnosis):
 
 # Initialize session state (unified data flow)
 SessionStateManager.initialize()
+
+# Guided data collection state
+if 'data_collection_state' not in st.session_state:
+    st.session_state.data_collection_state = None
 
 # Load data
 # Unpack databases with descriptive names
@@ -1740,6 +1859,18 @@ Step Therapy: REQUIRED ({step_req}, {step_dur})
     # Main content area - show results from either search method
     if (search_clicked or st.session_state.search_results is not None) or st.session_state.get('show_results', False):
         if search_clicked:
+            # Create DataCollectionState for quality scoring
+            collection_state = DataCollectionState(
+                state=selected_state if selected_state != 'ALL' else None,
+                payer=selected_payer if selected_payer != 'All Payers' else None,
+                drug_class=selected_drug
+            )
+            st.session_state.data_collection_state = collection_state
+            
+            # Show quality indicator
+            score, desc = collection_state.get_search_quality_score()
+            st.markdown(get_quality_indicator_html(score, desc), unsafe_allow_html=True)
+            
             # Perform search with national fallback support
             query, fallback_used, fallback_message = search_policies_with_fallback(
                 db_b,
@@ -1753,13 +1884,12 @@ Step Therapy: REQUIRED ({step_req}, {step_dur})
                 query = query[query['Drug_Class'].str.contains('Cluster', case=False, na=False)]
             elif headache_type == "Chronic Migraine":
                 query = query[query['Medication_Category'].str.contains('Chronic|Preventive', case=False, na=False)]
-            # Note: Episodic migraine patients can still use preventives, so we don't filter them out
             
             st.session_state.search_results = query
             st.session_state.patient_age = patient_age
             st.session_state.fallback_used = fallback_used
             st.session_state.fallback_message = fallback_message
-            st.session_state.show_pa_text = False  # Reset PA display on new search
+            st.session_state.show_pa_text = False
         
         results = st.session_state.search_results
         patient_age_display = st.session_state.get('patient_age', patient_age if 'patient_age' in dir() else 35)
@@ -1975,7 +2105,7 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
         help="Include: location, insurance, diagnosis, medications tried, medication considering"
     )
     
-    # Parse button
+   # Parse button
     if st.button("🤖 Parse Note with AI", type="primary", use_container_width=True):
         if not clinical_note.strip():
             st.warning("Please enter a clinical note to parse.")
@@ -1987,9 +2117,32 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
                     # Update unified patient context
                     SessionStateManager.set_from_ai_parse(parsed_data)
                     st.session_state.parsed_data = parsed_data  # Keep for backward compatibility
+                    
+                    # Create and store DataCollectionState for quality tracking
+                    collection_state = analyze_parsed_data(parsed_data)
+                    st.session_state.data_collection_state = collection_state
+                    
                     # Success celebration
                     st.balloons()
                     st.success("🎉 **Note Parsed Successfully!** Extracted patient data in 2.3 seconds.")
+                    
+                    # Show quality indicator
+                    score, desc = collection_state.get_search_quality_score()
+                    st.markdown(get_quality_indicator_html(score, desc), unsafe_allow_html=True)
+                    
+                    # Show warning if state is missing
+                    if not collection_state.state:
+                        st.markdown("""
+<div class="required-field-box">
+    <div style="font-weight: 700; color: #DC2626; margin-bottom: 0.5rem;">
+        🔴 State Not Detected
+    </div>
+    <div style="color: #7F1D1D;">
+        Please select state in the Search sidebar before searching policies.
+    </div>
+</div>
+""", unsafe_allow_html=True)
+                    
                     # Auto-scroll to results
                     # Scroll handled by anchor below
     
