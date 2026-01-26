@@ -1754,7 +1754,7 @@ elif st.session_state.current_page == 'Search':
                 with col1:
                     if st.button("🎯 Generate PA Letter", key=f"pa_{idx}", type="primary", use_container_width=True):
                         st.session_state.show_pa_text = True
-                        st.rerun()
+                        st.session_state.selected_policy_idx = idx
                 
                 st.markdown("<br>", unsafe_allow_html=True)
 
