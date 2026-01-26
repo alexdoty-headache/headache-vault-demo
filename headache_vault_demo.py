@@ -752,6 +752,7 @@ def search_policies_with_fallback(db_b, state, payer=None, drug_class=None):
     
     # Step 1: Try state-specific search
     query = db_b[db_b['State'] == state].copy()
+    query = query.reset_index(drop=True)  # Reset index to avoid boolean mask issues
     
     # Apply payer filter with flexible matching
     if payer:
@@ -794,6 +795,7 @@ def search_policies_with_fallback(db_b, state, payer=None, drug_class=None):
         # If no state match, try national fallback
         if len(payer_query) == 0:
             national_query = db_b[db_b['State'] == 'ALL'].copy()
+            national_query = national_query.reset_index(drop=True)  # Reset index
             national_mask = pd.Series([False] * len(national_query))
             for kw in payer_keywords:
                 national_mask = national_mask | national_query['Payer_Name'].str.contains(kw, case=False, na=False)
@@ -837,6 +839,7 @@ def search_policies_with_fallback(db_b, state, payer=None, drug_class=None):
             # If still no results, try national fallback
             if len(drug_query) == 0 and not fallback_used:
                 national_query = db_b[db_b['State'] == 'ALL'].copy()
+                national_query = national_query.reset_index(drop=True)  # Reset index
                 if payer and 'payer_keywords' in dir():
                     # Use same flexible matching
                     national_mask = pd.Series([False] * len(national_query))
