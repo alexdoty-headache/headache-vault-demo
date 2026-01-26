@@ -1501,6 +1501,14 @@ elif st.session_state.current_page == 'Search':
             if is_pediatric:
                 st.warning(f"⚠️ **Pediatric Patient (Age {age})** — FDA approval and dosing considerations included in PA letter.")
             
+            # Determine ICD-10 code based on diagnosis
+            icd10_codes = {
+                'Chronic Migraine': 'G43.709',
+                'Episodic Migraine': 'G43.009', 
+                'Cluster Headache': 'G44.009'
+            }
+            icd10_code = icd10_codes.get(diag, 'G43.709')
+            
             if st.session_state.user_mode == 'pcp':
                 st.markdown("""
                 <div class="learning-moment">
@@ -1540,7 +1548,7 @@ This patient meets age criteria for FDA-approved CGRP therapy.
 PATIENT INFORMATION
 ───────────────────
 Diagnosis: {diag}
-ICD-10 Code: G43.709
+ICD-10 Code: {icd10_code}
 Patient Age: {age} years{" (PEDIATRIC)" if is_pediatric else ""}
 {pediatric_section}
 REQUESTED MEDICATION
@@ -1605,7 +1613,7 @@ This request aligns with:
                 pa_text = f"""PRIOR AUTHORIZATION REQUEST
 {datetime.now().strftime('%Y-%m-%d')} | {row['Payer_Name']} | {state}
 
-Dx: {diag} (G43.709)
+Dx: {diag} ({icd10_code})
 Age: {age}y{pediatric_note}
 Rx: {drug} ({row['Medication_Category']})
 LOB: {row['LOB']}
