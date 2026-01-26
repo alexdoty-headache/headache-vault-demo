@@ -1482,6 +1482,11 @@ elif st.session_state.current_page == 'Search':
             drug = st.session_state.get('selected_drug', row['Drug_Class'])
             state = row['State']
             
+            # Get parsed prior medications if available
+            prior_meds = []
+            if 'parsed_data' in st.session_state and st.session_state.parsed_data.get('prior_medications'):
+                prior_meds = st.session_state.parsed_data.get('prior_medications', [])
+            
             st.markdown("### 📝 Prior Authorization Documentation")
             
             # Close button to dismiss PA
@@ -1512,9 +1517,6 @@ Diagnosis: {diag}
 ICD-10 Code: G43.709
 Patient Age: {age} years
 
-  ➤ TIP: Include headache frequency (e.g., "15+ headache days/month 
-    for 3+ months") and functional impact in your clinical notes.
-
 REQUESTED MEDICATION
 ────────────────────
 Drug Class: {drug}
@@ -1522,47 +1524,45 @@ Payer: {row['Payer_Name']}
 Line of Business: {row['LOB']}
 State: {state}
 
-  ➤ TIP: Specify the exact medication name and dose you're requesting
-    (e.g., "Aimovig 140mg monthly" not just "CGRP inhibitor").
-
 """
                 if row['Step_Therapy_Required'] == 'Yes':
                     step_req = row.get('Step_1_Requirement', 'Prior oral preventive trials required')
                     step_dur = row.get('Step_1_Duration', 'Per policy requirements')
                     pa_text += f"""STEP THERAPY REQUIREMENTS
 ─────────────────────────
-Status: ✓ REQUIRED - Document the following:
+Policy Requirement: {step_req}
+Required Duration: {step_dur}
 
-{step_req}
-Duration: {step_dur}
+"""
+                    # Add parsed prior medications if available
+                    if prior_meds:
+                        pa_text += """DOCUMENTED PRIOR MEDICATION TRIALS
+──────────────────────────────────
+"""
+                        for i, med in enumerate(prior_meds, 1):
+                            pa_text += f"  {i}. {med}\n"
+                        pa_text += """
+  ✓ Patient has completed required step therapy trials as documented above.
 
-  ➤ CRITICAL: For each failed medication, document:
-    • Exact drug name and maximum dose reached
-    • Start and end dates (minimum 8 weeks for most)
-    • Specific reason for failure (lack of efficacy with metrics,
-      or specific adverse effects that required discontinuation)
-
-DOCUMENTING FAILURE
-───────────────────
-Example of GOOD documentation:
-  "Topiramate 100mg daily, 1/1/2025-3/15/2025 (10 weeks).
-   Discontinued due to cognitive side effects (word-finding
-   difficulty) impacting work performance. <30% reduction
-   in monthly headache days (18→14 days)."
-
-Example of INSUFFICIENT documentation:
-  "Tried topiramate, didn't work."
-  (This WILL be denied - no dose, dates, or specific failure reason)
+"""
+                    else:
+                        pa_text += """PRIOR MEDICATION TRIALS
+───────────────────────
+  [Document each failed medication with:]
+  • Drug name and maximum dose reached
+  • Start and end dates (minimum 8 weeks)
+  • Specific reason for discontinuation
 
 """
                 pa_text += f"""
 CLINICAL RATIONALE
 ──────────────────
-[Document medical necessity here - include:]
-• Headache frequency and pattern
-• Impact on daily functioning/work/quality of life
-• Why this specific medication is appropriate
-• Any contraindications to alternatives
+Patient has documented history of {diag} with inadequate response 
+to conventional preventive therapies. {drug} is medically necessary 
+due to:
+• Failure/intolerance of prior preventive medications as documented above
+• Significant impact on daily functioning and quality of life
+• No contraindications to requested therapy
 
 REFERENCES
 ──────────
@@ -1570,6 +1570,8 @@ This request aligns with:
 • American Headache Society Consensus Statement (2021)
 • ICHD-3 Diagnostic Criteria
 • AAN/AHS Practice Guidelines
+
+══════════════════════════════════════════════════════════════
 """
             else:
                 # Specialist compact mode
@@ -1585,11 +1587,14 @@ LOB: {row['LOB']}
                     step_req = row.get('Step_1_Requirement', 'Prior preventive')
                     step_dur = row.get('Step_1_Duration', 'Per policy')
                     pa_text += f"""
-Step Therapy: REQUIRED
-  - {step_req}
-  - Duration: {step_dur}
-  - Status: Completed with documented failure
+Step Therapy: REQUIRED ({step_req}, {step_dur})
 """
+                    # Add prior meds in compact format
+                    if prior_meds:
+                        pa_text += "Prior Trials:\n"
+                        for med in prior_meds:
+                            pa_text += f"  • {med}\n"
+                    pa_text += "Status: Step therapy completed\n"
                 else:
                     pa_text += "\nStep Therapy: Not required\n"
                 
