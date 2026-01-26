@@ -1724,6 +1724,7 @@ Step Therapy: REQUIRED ({step_req}, {step_dur})
             st.session_state.patient_age = patient_age
             st.session_state.fallback_used = fallback_used
             st.session_state.fallback_message = fallback_message
+            st.session_state.show_pa_text = False  # Reset PA display on new search
         
         results = st.session_state.search_results
         patient_age_display = st.session_state.get('patient_age', patient_age if 'patient_age' in dir() else 35)
@@ -2087,6 +2088,7 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
             st.session_state.patient_age = parsed.get('age', 35)
             st.session_state.fallback_used = fallback_used
             st.session_state.fallback_message = fallback_message
+            st.session_state.show_pa_text = False  # Reset PA display on new search
             st.session_state.current_page = 'Search'
             
             if fallback_used:
