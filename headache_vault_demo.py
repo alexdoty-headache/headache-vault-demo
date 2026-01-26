@@ -4,13 +4,6 @@ import json
 import requests
 from datetime import datetime
 from data_flow import SessionStateManager, SidebarHelper, SearchService, PAGenerator
-
-import streamlit as st
-import pandas as pd
-import json
-import requests
-from datetime import datetime
-from data_flow import SessionStateManager, SidebarHelper, SearchService, PAGenerator
 from enum import Enum
 from dataclasses import dataclass, field
 from typing import Optional, List, Tuple
@@ -53,9 +46,25 @@ class DataCollectionState:
     def can_proceed_to_search(self) -> bool:
         return self.state is not None
     
-    def get_search_quality_score(self) -> Tuple[int, str]:
+   def get_search_quality_score(self) -> Tuple[int, str]:
         score = 0
         if self.state: score += 40
+        if self.payer: score += 30
+        if self.drug_class: score += 20
+        if self.diagnosis: score += 4
+        if self.age: score += 3
+        if self.prior_medications: score += 3
+        
+        if score >= 90:
+            return score, "Excellent - Highly targeted search"
+        elif score >= 70:
+            return score, "Good - Well-targeted search"
+        elif score >= 50:
+            return score, "Fair - Broad search, may have many results"
+        elif score >= 40:
+            return score, "Limited - State-level search only"
+        else:
+            return score, "Insufficient - State required"
 
 # Page configuration
 st.set_page_config(
