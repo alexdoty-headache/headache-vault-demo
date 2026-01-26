@@ -1765,28 +1765,12 @@ elif st.session_state.current_page == 'Search':
                     </div>
                     """, unsafe_allow_html=True)
                 
-                # Action buttons below the card
-                col1, col2, col3, col4 = st.columns([2,2,2,6])
-                
+                # Single primary action button - Generate PA
+                col1, col2 = st.columns([3, 9])
                 with col1:
-                    if st.button("📋 Copy Policy", key=f"copy_{idx}", use_container_width=True):
-                        policy_text = f"{row['Payer_Name']} - {row['Drug_Class']}\nState: {row['State']}\nStep Therapy: {row['Step_Therapy_Required']}"
-                        if row['Step_Therapy_Required'] == 'Yes':
-                            step_req_copy, _ = get_step_therapy_details(row); policy_text += f"\nRequirements: {step_req_copy}"
-                        st.toast("✅ Policy copied to clipboard!", icon="✅")
-                
-                with col2:
-                    if st.button("📄 Generate PA", key=f"pa_{idx}", use_container_width=True):
+                    if st.button("🎯 Generate PA Letter", key=f"pa_{idx}", type="primary", use_container_width=True):
                         st.session_state.show_pa_text = True
                         st.rerun()
-                
-                with col3:
-                    if st.button("🔗 View Details", key=f"details_{idx}", use_container_width=True):
-                        with st.expander("📊 Full Policy Details", expanded=True):
-                            st.markdown(f"**Payer:** {row['Payer_Name']}")
-                            st.markdown(f"**State:** {row['State']}")
-                            st.markdown(f"**Line of Business:** {row['LOB']}")
-                            st.markdown(f"**Medication Category:** {row['Medication_Category']}")
                 
                 st.markdown("<br>", unsafe_allow_html=True)
 
@@ -1977,38 +1961,39 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
             st.rerun()
 
 # ============================================================================
-# GLOBAL ACTION BUTTONS (Only on Search page)
+# CLINICAL TOOLS SECTION (Only on Search page)
 # ============================================================================
 if st.session_state.current_page == 'Search' and st.session_state.search_results is not None:
-    # Action buttons
     st.markdown("---")
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-        if st.button("📝 Generate PA Documentation", type="primary", use_container_width=True):
-            st.session_state.show_pa_text = True
-
-    with col2:
-        if st.button("⚕️ Check MOH Risk", use_container_width=True):
-            st.session_state.show_moh_check = True
-
-    with col3:
-        if st.button("📊 View ICD-10 Codes", use_container_width=True):
-            with st.expander("ICD-10 Diagnosis Codes", expanded=True):
-                # Filter ICD-10 codes by headache type
-                if 'headache_type' in dir():
-                    if headache_type == "Cluster Headache":
-                        icd_filter = icd10[icd10['ICD10_Code'].str.startswith('G44.0')]
-                    elif headache_type == "Chronic Migraine":
-                        icd_filter = icd10[icd10['ICD10_Code'].str.contains('G43.*1', regex=True)]
-                    else:
-                        icd_filter = icd10[icd10['ICD10_Code'].str.contains('G43.*0', regex=True)]
-                    
-                    st.dataframe(
-                        icd_filter[['ICD10_Code', 'ICD10_Description', 'Diagnostic_Criteria_Summary']],
-                        use_container_width=True,
-                        hide_index=True
-                    )
+    
+    # Clinical Tools in an expander - keeps UI clean
+    with st.expander("🔧 Clinical Tools", expanded=False):
+        tool_col1, tool_col2 = st.columns(2)
+        
+        with tool_col1:
+            st.markdown("##### ⚕️ MOH Risk Assessment")
+            st.markdown("Check if patient's acute medication use puts them at risk for medication overuse headache.")
+            if st.button("Check MOH Risk", key="moh_btn", use_container_width=True):
+                st.session_state.show_moh_check = True
+        
+        with tool_col2:
+            st.markdown("##### 📊 ICD-10 Code Lookup")
+            st.markdown("Find the correct diagnosis codes for headache disorders.")
+            if st.button("View ICD-10 Codes", key="icd_btn", use_container_width=True):
+                # Show ICD-10 codes inline
+                headache_type_val = st.session_state.get('headache_type', 'Chronic Migraine')
+                if headache_type_val == "Cluster Headache":
+                    icd_filter = icd10[icd10['ICD10_Code'].str.startswith('G44.0')]
+                elif headache_type_val == "Chronic Migraine":
+                    icd_filter = icd10[icd10['ICD10_Code'].str.contains('G43.7', regex=False)]
+                else:
+                    icd_filter = icd10[icd10['ICD10_Code'].str.startswith('G43')]
+                
+                st.dataframe(
+                    icd_filter[['ICD10_Code', 'ICD10_Description', 'PA_Relevance']],
+                    use_container_width=True,
+                    hide_index=True
+                )
 
 # ============================================================================
 # PA TEXT GENERATOR (Only on Search page)
