@@ -1297,16 +1297,24 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Header with Production Navigation
-st.markdown("""
-<div style="text-align: left; margin-bottom: 1rem;">
-    <div class="main-header">The Headache Vault</div>
-    <div class="sub-header">Prior Authorization Automation for Headache Medicine</div>
-    <div style="color: #262730; font-size: 0.95rem; font-weight: 400; font-family: 'Source Sans Pro', sans-serif;">
-        Infrastructure to Scale Specialist-Level Care
+# Header with title - using columns to add home button inline
+title_col1, title_col2 = st.columns([9, 1])
+with title_col1:
+    st.markdown("""
+    <div style="text-align: left; margin-bottom: 1rem;">
+        <div class="main-header">The Headache Vault</div>
+        <div class="sub-header">Prior Authorization Automation for Headache Medicine</div>
+        <div style="color: #262730; font-size: 0.95rem; font-weight: 400; font-family: 'Source Sans Pro', sans-serif;">
+            Infrastructure to Scale Specialist-Level Care
+        </div>
     </div>
-</div>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
+with title_col2:
+    if st.button("🏠", key="home_btn", help="Return to Dashboard"):
+        st.session_state.current_page = 'Dashboard'
+        st.session_state.search_results = None
+        st.session_state.show_pa_text = False
+        st.rerun()
 
 # ============================================================================
 # PERSONA TOGGLE - Experience Mode Selector
