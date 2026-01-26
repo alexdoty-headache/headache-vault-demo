@@ -732,6 +732,70 @@ def get_step_therapy_details(row):
     return str(requirement), str(duration)
 
 
+# ============================================================================
+# NATIONAL FALLBACK SEARCH - Added Jan 2026
+# ============================================================================
+def search_policies_with_fallback(db_b, state, payer=None, drug_class=None):
+    """
+    Search for policies with automatic fallback to national (ALL) entries.
+    
+    Priority:
+    1. State + Payer specific
+    2. National (ALL) + Payer specific (fallback)
+    
+    Returns: (results_df, fallback_used: bool, fallback_message: str)
+    """
+    fallback_used = False
+    fallback_message = ""
+    
+    # Step 1: Try state-specific search
+    query = db_b[db_b['State'] == state].copy()
+    
+    # Apply payer filter
+    if payer:
+        payer_query = query[query['Payer_Name'].str.contains(payer, case=False, na=False)]
+        
+        # If no state match, try national fallback
+        if len(payer_query) == 0:
+            national_query = db_b[db_b['State'] == 'ALL'].copy()
+            national_payer = national_query[
+                national_query['Payer_Name'].str.contains(payer, case=False, na=False)
+            ]
+            
+            if len(national_payer) > 0:
+                query = national_payer
+                fallback_used = True
+                fallback_message = f"ℹ️ No {state}-specific policy for {payer}. Showing **national baseline** policy. State-specific rules may vary."
+            else:
+                query = payer_query  # Empty
+        else:
+            query = payer_query
+    
+    # Apply drug class filter
+    if drug_class:
+        drug_query = query[query['Drug_Class'] == drug_class]
+        
+        # If no results, try national fallback for drug class
+        if len(drug_query) == 0 and not fallback_used:
+            national_query = db_b[db_b['State'] == 'ALL'].copy()
+            if payer:
+                national_query = national_query[
+                    national_query['Payer_Name'].str.contains(payer, case=False, na=False)
+                ]
+            national_drug = national_query[national_query['Drug_Class'] == drug_class]
+            
+            if len(national_drug) > 0:
+                query = national_drug
+                fallback_used = True
+                fallback_message = f"ℹ️ No {state}-specific policy for {drug_class}. Showing **national baseline** policy."
+            else:
+                query = drug_query  # Empty
+        else:
+            query = drug_query
+    
+    return query, fallback_used, fallback_message
+
+
 def send_lead_to_monday(name, email, practice, state, payer, drug_class, notes):
     """Send lead data to Monday.com CRM board"""
 
@@ -1295,13 +1359,13 @@ elif st.session_state.current_page == 'Search':
     # Main content area - show results from either search method
     if (search_clicked or st.session_state.search_results is not None) or st.session_state.get('show_results', False):
         if search_clicked:
-            # Perform search from sidebar
-            query = db_b[db_b['State'] == selected_state]
-            
-            if selected_payer != 'All Payers':
-                query = query[query['Payer_Name'] == selected_payer]
-            
-            query = query[query['Drug_Class'] == selected_drug]
+            # Perform search with national fallback support
+            query, fallback_used, fallback_message = search_policies_with_fallback(
+                db_b,
+                state=selected_state,
+                payer=selected_payer if selected_payer != 'All Payers' else None,
+                drug_class=selected_drug
+            )
             
             # Filter by headache type
             if headache_type == "Cluster Headache":
@@ -1312,9 +1376,15 @@ elif st.session_state.current_page == 'Search':
             
             st.session_state.search_results = query
             st.session_state.patient_age = patient_age
+            st.session_state.fallback_used = fallback_used
+            st.session_state.fallback_message = fallback_message
         
         results = st.session_state.search_results
         patient_age_display = st.session_state.get('patient_age', patient_age if 'patient_age' in dir() else 35)
+        
+        # Show fallback notice if applicable
+        if st.session_state.get('fallback_used', False):
+            st.info(st.session_state.get('fallback_message', ''))
         
         if len(results) == 0:
             st.warning("⚠️ No policies found for this combination.")
@@ -1661,29 +1731,13 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
         
         # Search button with celebration
         if st.button("🔎 Search with Extracted Data", type="primary", use_container_width=True):
-            # Perform search with parsed data
-            query = db_b[db_b['State'] == parsed['state']]
-            
-            if parsed.get('payer') and parsed['payer'] != 'All Payers':
-                # Try to match payer name - prefer EXACT match first
-                payer_matches = db_b[db_b['State'] == parsed['state']]['Payer_Name'].unique()
-                matched_payer = None
-                
-                # First try exact match
-                if parsed['payer'] in payer_matches:
-                    matched_payer = parsed['payer']
-                else:
-                    # Then try flexible matching
-                    for p in payer_matches:
-                        if parsed['payer'].lower() in p.lower() or p.lower() in parsed['payer'].lower():
-                            matched_payer = p
-                            break
-                
-                if matched_payer:
-                    query = query[query['Payer_Name'] == matched_payer]
-            
-            if parsed.get('drug_class'):
-                query = query[query['Drug_Class'] == parsed['drug_class']]
+            # Perform search with national fallback support
+            query, fallback_used, fallback_message = search_policies_with_fallback(
+                db_b,
+                state=parsed.get('state'),
+                payer=parsed.get('payer'),
+                drug_class=parsed.get('drug_class')
+            )
             
             # Filter by diagnosis - but DON'T double-filter if drug_class already contains the diagnosis
             if parsed.get('diagnosis') == "Cluster Headache":
@@ -1700,7 +1754,12 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
             
             st.session_state.search_results = query
             st.session_state.patient_age = parsed.get('age', 35)
+            st.session_state.fallback_used = fallback_used
+            st.session_state.fallback_message = fallback_message
             st.session_state.current_page = 'Search'
+            
+            if fallback_used:
+                st.toast(f"Using national baseline policy", icon="ℹ️")
             st.toast("🎉 Policy search complete! Found {} matching policies.".format(len(query)), icon="🎉")
             st.rerun()
 
