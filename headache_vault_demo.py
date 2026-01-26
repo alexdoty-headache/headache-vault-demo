@@ -1414,30 +1414,6 @@ if st.session_state.current_page == 'Dashboard':
     # What's New Banner
     st.info("🎉 **What's New:** AI Clinical Note Parsing now available! Parse unstructured notes in seconds.")
     
-    # Quick Actions
-    st.markdown("### ⚡ Quick Actions")
-    
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        if st.button("🔍 Search Policies", use_container_width=True, type="primary"):
-            st.session_state.current_page = 'Search'
-            st.rerun()
-        st.caption("Find step therapy requirements by payer and drug")
-    
-    with col2:
-        if st.button("🤖 Parse Clinical Note", use_container_width=True, type="primary"):
-            st.session_state.current_page = 'AI Parser'
-            st.rerun()
-        st.caption("AI extracts patient data from clinic notes")
-    
-    with col3:
-        if st.button("📋 Generate PA", use_container_width=True, type="primary"):
-            st.session_state.current_page = 'Search'
-            st.session_state.show_pa_text = True
-            st.rerun()
-        st.caption("Auto-generate prior authorization text")
-    
     # System Status
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("### 🔧 System Status")
