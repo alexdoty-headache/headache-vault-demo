@@ -1899,6 +1899,7 @@ Step Therapy: REQUIRED
                     if st.button("🎯 Generate PA Letter", key=f"pa_{idx}", type="primary", use_container_width=True):
                         st.session_state.show_pa_text = True
                         st.session_state.selected_policy_idx = idx
+                        st.rerun()
                 
                 st.markdown("<br>", unsafe_allow_html=True)
 
@@ -2219,3 +2220,4 @@ st.markdown("""
     </div>
 </div>
 """, unsafe_allow_html=True)
+    
