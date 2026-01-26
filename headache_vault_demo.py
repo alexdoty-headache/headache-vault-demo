@@ -2119,6 +2119,10 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
         if not clinical_note.strip():
             st.warning("Please enter a clinical note to parse.")
         else:
+            # Clear previous parsed data before new parse
+            st.session_state.parsed_data = None
+            st.session_state.data_collection_state = None
+            
             with st.spinner("🧠 Analyzing clinical note..."):
                 parsed_data = parse_clinical_note(clinical_note, db_a, db_b)
                 
