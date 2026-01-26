@@ -737,11 +737,13 @@ def get_step_therapy_details(row):
 # ============================================================================
 def search_policies_with_fallback(db_b, state, payer=None, drug_class=None):
     """
-    Search for policies with automatic fallback to national (ALL) entries.
+    Search for policies with automatic fallback to national (ALL) entries
+    and drug class cascading for preventive gepants.
     
     Priority:
-    1. State + Payer specific
-    2. National (ALL) + Payer specific (fallback)
+    1. State + Payer + Drug Class specific
+    2. National (ALL) + Payer + Drug Class specific
+    3. For Gepants (Preventive): Try Qulipta → CGRP mAbs cascade
     
     Returns: (results_df, fallback_used: bool, fallback_message: str)
     """
@@ -771,27 +773,58 @@ def search_policies_with_fallback(db_b, state, payer=None, drug_class=None):
         else:
             query = payer_query
     
-    # Apply drug class filter
+    # Apply drug class filter with cascading for preventive gepants
     if drug_class:
         drug_query = query[query['Drug_Class'] == drug_class]
         
-        # If no results, try national fallback for drug class
-        if len(drug_query) == 0 and not fallback_used:
-            national_query = db_b[db_b['State'] == 'ALL'].copy()
-            if payer:
-                national_query = national_query[
-                    national_query['Payer_Name'].str.contains(payer, case=False, na=False)
-                ]
-            national_drug = national_query[national_query['Drug_Class'] == drug_class]
+        # If no results, try cascading fallbacks
+        if len(drug_query) == 0:
+            cascade_classes = []
+            cascade_message = ""
             
-            if len(national_drug) > 0:
-                query = national_drug
-                fallback_used = True
-                fallback_message = f"ℹ️ No {state}-specific policy for {drug_class}. Showing **national baseline** policy."
-            else:
-                query = drug_query  # Empty
-        else:
-            query = drug_query
+            # Define cascade order for preventive gepants
+            if drug_class == 'Gepants (Preventive)':
+                cascade_classes = ['Qulipta', 'CGRP mAbs']
+                cascade_message = "Nurtec Preventive"
+            elif drug_class == 'Qulipta':
+                cascade_classes = ['Gepants (Preventive)', 'CGRP mAbs']
+                cascade_message = "Qulipta"
+            
+            # Try cascade classes
+            for cascade_class in cascade_classes:
+                cascade_query = query[query['Drug_Class'] == cascade_class]
+                if len(cascade_query) > 0:
+                    drug_query = cascade_query
+                    fallback_used = True
+                    fallback_message = f"ℹ️ No {drug_class} policy found. Showing **{cascade_class}** policy (similar step therapy requirements)."
+                    break
+            
+            # If still no results, try national fallback
+            if len(drug_query) == 0 and not fallback_used:
+                national_query = db_b[db_b['State'] == 'ALL'].copy()
+                if payer:
+                    national_query = national_query[
+                        national_query['Payer_Name'].str.contains(payer, case=False, na=False)
+                    ]
+                
+                # Try original drug class nationally
+                national_drug = national_query[national_query['Drug_Class'] == drug_class]
+                
+                # If not found, try cascade classes nationally
+                if len(national_drug) == 0:
+                    for cascade_class in cascade_classes:
+                        national_drug = national_query[national_query['Drug_Class'] == cascade_class]
+                        if len(national_drug) > 0:
+                            fallback_message = f"ℹ️ No {state}-specific {drug_class} policy. Showing **national {cascade_class}** baseline."
+                            break
+                
+                if len(national_drug) > 0:
+                    drug_query = national_drug
+                    fallback_used = True
+                    if not fallback_message:
+                        fallback_message = f"ℹ️ No {state}-specific policy for {drug_class}. Showing **national baseline** policy."
+        
+        query = drug_query
     
     return query, fallback_used, fallback_message
 
@@ -1032,11 +1065,20 @@ Medication name to class mapping:
 - Aimovig, Ajovy, Emgality (migraine), erenumab → "CGRP mAbs"
 - Emgality 300mg for CLUSTER HEADACHE → "CGRP mAb (Cluster)" (NOT "CGRP mAbs")
 - If diagnosis is Cluster Headache and medication is Emgality → "CGRP mAb (Cluster)"
-- Ubrelvy, Nurtec ODT, ubrogepant, rimegepant → "Gepants"
-- Qulipta, atogepant → "Qulipta"
+- Ubrelvy, ubrogepant → "Gepants" (acute only)
+- Zavzpret, zavegepant → "Gepants" (acute only)
+- Nurtec ODT, rimegepant for ACUTE/PRN use → "Gepants"
+- Nurtec ODT, rimegepant for PREVENTION → "Gepants (Preventive)"
+- Qulipta, atogepant → "Qulipta" (preventive only)
 - Botox, onabotulinumtoxinA → "Botox"
 - Vyepti, eptinezumab → "Vyepti"
 - For Cluster Headache prevention → "CGRP mAb (Cluster)" or "Emgality (Cluster)"
+
+CRITICAL - Nurtec indication detection:
+- If note says "prevent", "prevention", "prophylaxis", "daily", "every other day", "EOD" → "Gepants (Preventive)"
+- If note says "acute", "PRN", "as needed", "rescue", "abort" → "Gepants"
+- If unclear, check diagnosis: Chronic Migraine often uses preventive, Episodic often uses acute
+- Default to "Gepants (Preventive)" if requesting Nurtec for someone already on preventive therapy discussion
 
 Clinical note:
 {note_text}
