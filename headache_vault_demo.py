@@ -1229,21 +1229,29 @@ def parse_clinical_note(note_text, db_a, db_b):
                 "role": "user",
                 "content": f"""Extract patient information from this clinical note. Return ONLY a JSON object.
 
+CRITICAL RULE: Only extract information that is EXPLICITLY stated in the note.
+- If state/location is NOT mentioned → return null for state
+- If insurance/payer is NOT mentioned → return null for payer  
+- If age is NOT mentioned → return null for age
+- If specific medication is NOT mentioned → return null for drug_class
+- Do NOT guess, infer, or make up any information that is not written in the note
+
 CRITICAL: Look for insurance/payer information carefully. Examples:
 - "Has Independence Blue Cross" → payer: "Independence Blue Cross"
 - "Has Highmark insurance" → payer: "Highmark Blue Cross Blue Shield"
 - "Aetna commercial plan" → payer: "Aetna"
 - "UnitedHealthcare" → payer: "UnitedHealthcare"
+- NO INSURANCE MENTIONED → payer: null
 
 JSON format:
 {{
-  "state": "two-letter state code (PA, NY, CA, etc) or null",
-  "payer": "EXACT insurance company name or null - LOOK FOR THIS CAREFULLY", 
-  "drug_class": "medication class from drug list or null",
-  "diagnosis": "Chronic Migraine, Episodic Migraine, or Cluster Headache",
-  "age": integer age or null,
-  "prior_medications": ["medications that failed"],
-  "confidence": "high/medium/low"
+  "state": "two-letter state code (PA, NY, CA, etc) or null if NOT explicitly stated",
+  "payer": "EXACT insurance company name or null if NOT explicitly stated", 
+  "drug_class": "medication class from drug list or null if NOT explicitly stated",
+  "diagnosis": "Chronic Migraine, Episodic Migraine, or Cluster Headache based on symptoms",
+  "age": integer age or null if NOT explicitly stated,
+  "prior_medications": ["medications that failed - only include if explicitly named"],
+  "confidence": "high if most fields found, medium if some missing, low if minimal info"
 }}
 
 Common payers in database:
@@ -1287,7 +1295,7 @@ DRUG CLASS PRIORITY for unspecified preventive requests:
 Clinical note:
 {note_text}
 
-Return ONLY the JSON object with all fields filled in. If you see ANY mention of insurance or payer, include it in the "payer" field."""
+Return ONLY the JSON object. Use null for ANY field where information is not explicitly stated in the note. Do NOT fabricate or assume information."""
             }]
         )
         
