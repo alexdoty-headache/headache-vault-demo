@@ -1482,6 +1482,9 @@ elif st.session_state.current_page == 'Search':
             drug = st.session_state.get('selected_drug', row['Drug_Class'])
             state = row['State']
             
+            # Check if pediatric patient
+            is_pediatric = age < 18
+            
             # Get parsed prior medications if available
             prior_meds = []
             if 'parsed_data' in st.session_state and st.session_state.parsed_data.get('prior_medications'):
@@ -1493,6 +1496,10 @@ elif st.session_state.current_page == 'Search':
             if st.button("✕ Close PA Letter", key="close_pa"):
                 st.session_state.show_pa_text = False
                 st.rerun()
+            
+            # Show pediatric alert if applicable
+            if is_pediatric:
+                st.warning(f"⚠️ **Pediatric Patient (Age {age})** — FDA approval and dosing considerations included in PA letter.")
             
             if st.session_state.user_mode == 'pcp':
                 st.markdown("""
@@ -1506,6 +1513,25 @@ elif st.session_state.current_page == 'Search':
                 </div>
                 """, unsafe_allow_html=True)
                 
+                # Build pediatric section if needed
+                pediatric_section = ""
+                if is_pediatric:
+                    pediatric_section = f"""
+PEDIATRIC CONSIDERATIONS
+────────────────────────
+Patient Age: {age} years (Pediatric)
+
+FDA-Approved CGRP Medications for Pediatric Migraine Prevention:
+• Aimovig (erenumab): Approved for ages 12+ for migraine prevention
+• Ajovy (fremanezumab): Approved for ages 12+ for migraine prevention  
+• Emgality (galcanezumab): Approved for ages 12+ for migraine prevention
+
+Dosing: Standard adult dosing is appropriate for patients ≥12 years.
+
+This patient meets age criteria for FDA-approved CGRP therapy.
+
+"""
+                
                 pa_text = f"""══════════════════════════════════════════════════════════════
               PRIOR AUTHORIZATION REQUEST - {drug.upper()}
               Generated: {datetime.now().strftime('%B %d, %Y')}
@@ -1515,8 +1541,8 @@ PATIENT INFORMATION
 ───────────────────
 Diagnosis: {diag}
 ICD-10 Code: G43.709
-Patient Age: {age} years
-
+Patient Age: {age} years{" (PEDIATRIC)" if is_pediatric else ""}
+{pediatric_section}
 REQUESTED MEDICATION
 ────────────────────
 Drug Class: {drug}
@@ -1575,11 +1601,12 @@ This request aligns with:
 """
             else:
                 # Specialist compact mode
+                pediatric_note = " [PEDIATRIC - FDA approved 12+]" if is_pediatric else ""
                 pa_text = f"""PRIOR AUTHORIZATION REQUEST
 {datetime.now().strftime('%Y-%m-%d')} | {row['Payer_Name']} | {state}
 
 Dx: {diag} (G43.709)
-Age: {age}y
+Age: {age}y{pediatric_note}
 Rx: {drug} ({row['Medication_Category']})
 LOB: {row['LOB']}
 """
