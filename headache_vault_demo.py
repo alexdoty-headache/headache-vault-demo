@@ -46,7 +46,7 @@ class DataCollectionState:
     def can_proceed_to_search(self) -> bool:
         return self.state is not None
     
-   def get_search_quality_score(self) -> Tuple[int, str]:
+    def get_search_quality_score(self) -> Tuple[int, str]:
         score = 0
         if self.state: score += 40
         if self.payer: score += 30
