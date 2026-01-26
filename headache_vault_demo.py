@@ -1370,8 +1370,8 @@ with col2:
         st.session_state.current_page = 'Search'
         st.rerun()
 with col3:
-    if st.button("📝 AI Parser", use_container_width=True, type="primary" if st.session_state.current_page == 'AI Parser' else "secondary"):
-        st.session_state.current_page = 'AI Parser'
+    if st.button("📋 Paste Notes", use_container_width=True, type="primary" if st.session_state.current_page == 'Paste Notes' else "secondary"):
+        st.session_state.current_page = 'Paste Notes'
         st.rerun()
 
 st.markdown("---")
@@ -1906,7 +1906,7 @@ Step Therapy: REQUIRED
 # ============================================================================
 # AI PARSER PAGE
 # ============================================================================
-elif st.session_state.current_page == 'AI Parser':
+elif st.session_state.current_page == 'Paste Notes':
     
     st.markdown("### 🤖 AI Clinical Note Parser")
     st.markdown("Paste unstructured clinical notes and let AI extract structured patient data in seconds.")
