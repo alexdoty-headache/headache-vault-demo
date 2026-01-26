@@ -1467,6 +1467,150 @@ if st.session_state.current_page == 'Dashboard':
 # ============================================================================
 elif st.session_state.current_page == 'Search':
     
+    # ========================================================================
+    # PA TEXT GENERATOR - Show at TOP when active
+    # ========================================================================
+    if st.session_state.show_pa_text and st.session_state.search_results is not None:
+        results = st.session_state.search_results
+        if len(results) > 0:
+            row = results.iloc[0]
+            
+            # Get values safely
+            headache_type = st.session_state.get('headache_type', 'Chronic Migraine')
+            diag = st.session_state.parsed_data.get('diagnosis', headache_type) if 'parsed_data' in st.session_state else headache_type
+            age = st.session_state.get('patient_age', 35)
+            drug = st.session_state.get('selected_drug', row['Drug_Class'])
+            state = row['State']
+            
+            st.markdown("### 📝 Prior Authorization Documentation")
+            
+            # Close button to dismiss PA
+            if st.button("✕ Close PA Letter", key="close_pa"):
+                st.session_state.show_pa_text = False
+                st.rerun()
+            
+            if st.session_state.user_mode == 'pcp':
+                st.markdown("""
+                <div class="learning-moment">
+                    <div class="learning-moment-title">💡 PA Documentation Tips</div>
+                    <div class="learning-moment-content">
+                        <strong>Keys to approval:</strong> Be specific about medication names, exact dosages, 
+                        trial durations with dates, and clear failure reasons. Vague language like 
+                        "tried several medications" or "adequate trial" often leads to denials.
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                pa_text = f"""══════════════════════════════════════════════════════════════
+              PRIOR AUTHORIZATION REQUEST - {drug.upper()}
+              Generated: {datetime.now().strftime('%B %d, %Y')}
+══════════════════════════════════════════════════════════════
+
+PATIENT INFORMATION
+───────────────────
+Diagnosis: {diag}
+ICD-10 Code: G43.709
+Patient Age: {age} years
+
+  ➤ TIP: Include headache frequency (e.g., "15+ headache days/month 
+    for 3+ months") and functional impact in your clinical notes.
+
+REQUESTED MEDICATION
+────────────────────
+Drug Class: {drug}
+Payer: {row['Payer_Name']}
+Line of Business: {row['LOB']}
+State: {state}
+
+  ➤ TIP: Specify the exact medication name and dose you're requesting
+    (e.g., "Aimovig 140mg monthly" not just "CGRP inhibitor").
+
+"""
+                if row['Step_Therapy_Required'] == 'Yes':
+                    step_req = row.get('Step_1_Requirement', 'Prior oral preventive trials required')
+                    step_dur = row.get('Step_1_Duration', 'Per policy requirements')
+                    pa_text += f"""STEP THERAPY REQUIREMENTS
+─────────────────────────
+Status: ✓ REQUIRED - Document the following:
+
+{step_req}
+Duration: {step_dur}
+
+  ➤ CRITICAL: For each failed medication, document:
+    • Exact drug name and maximum dose reached
+    • Start and end dates (minimum 8 weeks for most)
+    • Specific reason for failure (lack of efficacy with metrics,
+      or specific adverse effects that required discontinuation)
+
+DOCUMENTING FAILURE
+───────────────────
+Example of GOOD documentation:
+  "Topiramate 100mg daily, 1/1/2025-3/15/2025 (10 weeks).
+   Discontinued due to cognitive side effects (word-finding
+   difficulty) impacting work performance. <30% reduction
+   in monthly headache days (18→14 days)."
+
+Example of INSUFFICIENT documentation:
+  "Tried topiramate, didn't work."
+  (This WILL be denied - no dose, dates, or specific failure reason)
+
+"""
+                pa_text += f"""
+CLINICAL RATIONALE
+──────────────────
+[Document medical necessity here - include:]
+• Headache frequency and pattern
+• Impact on daily functioning/work/quality of life
+• Why this specific medication is appropriate
+• Any contraindications to alternatives
+
+REFERENCES
+──────────
+This request aligns with:
+• American Headache Society Consensus Statement (2021)
+• ICHD-3 Diagnostic Criteria
+• AAN/AHS Practice Guidelines
+"""
+            else:
+                # Specialist compact mode
+                pa_text = f"""PRIOR AUTHORIZATION REQUEST
+{datetime.now().strftime('%Y-%m-%d')} | {row['Payer_Name']} | {state}
+
+Dx: {diag} (G43.709)
+Age: {age}y
+Rx: {drug} ({row['Medication_Category']})
+LOB: {row['LOB']}
+"""
+                if row['Step_Therapy_Required'] == 'Yes':
+                    step_req = row.get('Step_1_Requirement', 'Prior preventive')
+                    step_dur = row.get('Step_1_Duration', 'Per policy')
+                    pa_text += f"""
+Step Therapy: REQUIRED
+  - {step_req}
+  - Duration: {step_dur}
+  - Status: Completed with documented failure
+"""
+                else:
+                    pa_text += "\nStep Therapy: Not required\n"
+                
+                pa_text += "\nRefs: AHS 2024, ICHD-3, AAN Guidelines"
+            
+            st.code(pa_text, language=None)
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("📋 Copy to Clipboard", key="copy_pa", use_container_width=True):
+                    st.toast("✅ PA text copied!", icon="✅")
+            with col2:
+                if st.button("🔙 Back to Results", key="back_to_results", use_container_width=True):
+                    st.session_state.show_pa_text = False
+                    st.rerun()
+            
+            st.markdown("---")
+    
+    # ========================================================================
+    # SEARCH PAGE CONTENT
+    # ========================================================================
     st.markdown("### 🔍 Policy Search")
     st.markdown("Search for prior authorization requirements by state, payer, and medication.")
     
@@ -1978,274 +2122,6 @@ if st.session_state.current_page == 'Search' and st.session_state.search_results
                     use_container_width=True,
                     hide_index=True
                 )
-
-# ============================================================================
-# PA TEXT GENERATOR (Only on Search page)
-# ============================================================================
-# DEBUG: Show session state for troubleshooting
-if st.session_state.current_page == 'Search':
-    with st.expander("🔧 Debug Info", expanded=False):
-        st.write(f"show_pa_text: {st.session_state.get('show_pa_text', 'NOT SET')}")
-        st.write(f"search_results is None: {st.session_state.search_results is None}")
-        st.write(f"search_results type: {type(st.session_state.get('search_results'))}")
-
-if st.session_state.current_page == 'Search' and st.session_state.show_pa_text and st.session_state.search_results is not None:
-    st.markdown("---")
-    st.markdown("### 📝 Prior Authorization Documentation")
-    
-    results = st.session_state.search_results
-    if len(results) > 0:
-        row = results.iloc[0]
-        
-        # Get values safely
-        diag = st.session_state.parsed_data.get('diagnosis', headache_type) if 'parsed_data' in st.session_state else (headache_type if 'headache_type' in dir() else "Chronic Migraine")
-        age = st.session_state.get('patient_age', patient_age if 'patient_age' in dir() else 35)
-        drug = selected_drug if 'selected_drug' in dir() else row['Drug_Class']
-        state = selected_state if 'selected_state' in dir() else row['State']
-        
-        # ================================================================
-        # PCP MODE: Verbose template with inline guidance
-        # ================================================================
-        if st.session_state.user_mode == 'pcp':
-            st.markdown("""
-            <div class="learning-moment">
-                <div class="learning-moment-title">💡 PA Documentation Tips</div>
-                <div class="learning-moment-content">
-                    <strong>Keys to approval:</strong> Be specific about medication names, exact dosages, 
-                    trial durations with dates, and clear failure reasons. Vague language like 
-                    "tried several medications" or "adequate trial" often leads to denials.
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            pa_text = f"""══════════════════════════════════════════════════════════════
-              PRIOR AUTHORIZATION REQUEST - {drug.upper()}
-              Generated: {datetime.now().strftime('%B %d, %Y')}
-══════════════════════════════════════════════════════════════
-
-PATIENT INFORMATION
-───────────────────
-Diagnosis: {diag}
-ICD-10 Code: G43.709
-Patient Age: {age} years
-
-  ➤ TIP: Include headache frequency (e.g., "15+ headache days/month 
-    for 3+ months") and functional impact in your clinical notes.
-
-REQUESTED MEDICATION
-────────────────────
-Drug Class: {drug}
-Category: {row['Medication_Category']}
-
-  ➤ TIP: Specify exact drug, strength, and quantity 
-    (e.g., "Aimovig 70mg, 1 autoinjector monthly, Qty: 3")
-
-PAYER INFORMATION
-─────────────────
-Payer: {row['Payer_Name']}
-State: {state}
-Line of Business: {row['LOB']}
-
-CLINICAL JUSTIFICATION
-──────────────────────"""
-            
-            if row['Step_Therapy_Required'] == 'Yes':
-                step_req = row.get('Step_1_Requirement', 'Prior preventive therapy')
-                step_dur = row.get('Step_1_Duration', 'Per policy')
-                pa_text += f"""
-
-STEP THERAPY DOCUMENTATION (Required by this payer)
-────────────────────────────────────────────────────
-Required: {step_req}
-Duration: {step_dur}
-
-  ➤ DOCUMENT EACH PRIOR TRIAL LIKE THIS:
-    "Patient completed [X]-day trial of [DRUG] [DOSE] from 
-    [START DATE] to [END DATE]. Discontinued due to 
-    [SPECIFIC REASON: side effect/lack of efficacy]."
-
-Patient has completed required step therapy with documented 
-inadequate response or contraindication to prior treatments.
-"""
-            else:
-                pa_text += """
-
-  ✓ No step therapy required for this payer/medication combination.
-    You can proceed directly to CGRP therapy.
-"""
-            
-            # Add denial code language
-            if pd.notna(row.get('Vault_Denial_Code')):
-                denial_info = db_c[db_c['Vault_Denial_Code'] == row['Vault_Denial_Code']]
-                if len(denial_info) > 0:
-                    denial_row = denial_info.iloc[0]
-                    if pd.notna(denial_row.get('Winning_Clinical_Phrases_Universal')):
-                        pa_text += f"""
-
-RECOMMENDED CLINICAL LANGUAGE
-─────────────────────────────
-{denial_row['Winning_Clinical_Phrases_Universal']}
-
-  ➤ TIP: This language addresses common denial reasons for this 
-    policy. Adapt it to your patient's specific situation.
-"""
-            
-            pa_text += """
-
-REFERENCE CITATIONS
-───────────────────
-• American Headache Society Consensus Statement (2024)
-• ICHD-3 Diagnostic Criteria for Migraine
-• American Academy of Neurology Practice Guidelines
-
-══════════════════════════════════════════════════════════════
-"""
-        
-        # ================================================================
-        # SPECIALIST MODE: Clean, compact template
-        # ================================================================
-        else:
-            pa_text = f"""PRIOR AUTHORIZATION REQUEST
-{datetime.now().strftime('%Y-%m-%d')} | {row['Payer_Name']} | {state}
-
-Dx: {diag} (G43.709)
-Age: {age}y
-Rx: {drug} ({row['Medication_Category']})
-LOB: {row['LOB']}
-"""
-            
-            if row['Step_Therapy_Required'] == 'Yes':
-                step_req = row.get('Step_1_Requirement', 'Prior preventive')
-                step_dur = row.get('Step_1_Duration', 'Per policy')
-                pa_text += f"""
-Step Therapy: REQUIRED
-  - {step_req}
-  - Duration: {step_dur}
-  - Status: Completed with documented failure
-"""
-            else:
-                pa_text += "\nStep Therapy: Not required\n"
-            
-            # Add denial code language (compact)
-            if pd.notna(row.get('Vault_Denial_Code')):
-                denial_info = db_c[db_c['Vault_Denial_Code'] == row['Vault_Denial_Code']]
-                if len(denial_info) > 0:
-                    denial_row = denial_info.iloc[0]
-                    if pd.notna(denial_row.get('Winning_Clinical_Phrases_Universal')):
-                        pa_text += f"\nClinical Rationale:\n{denial_row['Winning_Clinical_Phrases_Universal']}\n"
-            
-            pa_text += "\nRefs: AHS 2024, ICHD-3, AAN Guidelines"
-        
-        st.code(pa_text, language=None)
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("📋 Copy to Clipboard", use_container_width=True):
-                st.success("✅ PA text copied!")
-        with col2:
-            if st.session_state.user_mode == 'pcp':
-                if st.button("⚡ Switch to Compact View", use_container_width=True):
-                    st.session_state.user_mode = 'specialist'
-                    st.rerun()
-            else:
-                if st.button("📘 Switch to Guided View", use_container_width=True):
-                    st.session_state.user_mode = 'pcp'
-                    st.rerun()
-        
-        # ================================================================
-        # LEAD CAPTURE FORM - "Email My PA"
-        # ================================================================
-        st.markdown("---")
-        
-        if st.session_state.lead_submitted:
-            st.success(f"✅ PA sent to {st.session_state.lead_email}! Check your inbox.")
-            st.markdown("*We'll also send you policy update alerts for this payer.*")
-        else:
-            st.markdown("""
-            <div style="background: linear-gradient(135deg, #F8F9FA 0%, #FFFFFF 100%); 
-                        border: 2px solid #E6E6FA; border-radius: 12px; padding: 1.25rem; margin: 1rem 0;">
-                <div style="font-size: 1.1rem; font-weight: 600; color: #4B0082; margin-bottom: 0.5rem;">
-                    📧 Want this PA emailed to you?
-                </div>
-                <div style="font-size: 0.9rem; color: #5A5A5A; margin-bottom: 1rem;">
-                    Save your work and get policy update alerts for this payer.
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            with st.form(key="lead_capture_form"):
-                lead_col1, lead_col2 = st.columns(2)
-                
-                with lead_col1:
-                    lead_email = st.text_input(
-                        "Email *",
-                        placeholder="your.email@practice.com",
-                        help="Required - We'll send your PA here"
-                    )
-                    lead_name = st.text_input(
-                        "Name (optional)",
-                        placeholder="Dr. Jane Smith"
-                    )
-                
-                with lead_col2:
-                    lead_practice = st.text_input(
-                        "Practice (optional)",
-                        placeholder="Main Street Family Medicine"
-                    )
-                    lead_role = st.selectbox(
-                        "Role (optional)",
-                        options=["", "PCP / Family Medicine", "Neurologist", "NP / PA", "Office Staff", "Other"],
-                        index=0
-                    )
-                
-                # Build notes from context
-                context_notes = f"Role: {lead_role}" if lead_role else ""
-                context_notes += f"\nMode: {st.session_state.user_mode.upper()}"
-                
-                submit_col1, submit_col2 = st.columns([2, 1])
-                with submit_col1:
-                    submit_button = st.form_submit_button(
-                        "📧 Email My PA",
-                        use_container_width=True,
-                        type="primary"
-                    )
-                with submit_col2:
-                    st.markdown("<div style='padding-top: 0.5rem; font-size: 0.8rem; color: #888;'>or just copy above ↑</div>", unsafe_allow_html=True)
-                
-                if submit_button:
-                    if not lead_email or "@" not in lead_email:
-                        st.error("Please enter a valid email address")
-                    else:
-                        # Try to send to Monday.com
-                        success, result = send_lead_to_monday(
-                            name=lead_name,
-                            email=lead_email,
-                            practice=lead_practice,
-                            state=state,
-                            payer=row['Payer_Name'],
-                            drug_class=drug,
-                            notes=context_notes
-                        )
-                        
-                        if success:
-                            st.session_state.lead_submitted = True
-                            st.session_state.lead_email = lead_email
-                            st.session_state.pa_count += 1
-                            st.rerun()
-                        else:
-                            # Still show success to user (don't expose backend issues)
-                            st.session_state.lead_submitted = True
-                            st.session_state.lead_email = lead_email
-                            st.session_state.pa_count += 1
-                            # Log the error for debugging
-                            print(f"Monday.com error: {result}")
-                            st.rerun()
-            
-            st.markdown("""
-            <div style="font-size: 0.75rem; color: #888; text-align: center; margin-top: 0.5rem;">
-                🔒 We respect your privacy. Unsubscribe anytime.
-            </div>
-            """, unsafe_allow_html=True)
 
 # ============================================================================
 # MOH CHECKER (Only on Search page)
