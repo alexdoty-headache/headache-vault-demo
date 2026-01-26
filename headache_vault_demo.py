@@ -2033,8 +2033,18 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
             # Filter drugs by edited state
             state_drugs = sorted(db_b[db_b['State'] == edited_state]['Drug_Class'].unique().tolist())
             drug_index = 0
-            if parsed.get('drug_class') and parsed['drug_class'] in state_drugs:
-                drug_index = state_drugs.index(parsed['drug_class'])
+            parsed_drug = parsed.get('drug_class')
+            
+            if parsed_drug and parsed_drug in state_drugs:
+                drug_index = state_drugs.index(parsed_drug)
+            elif parsed_drug:
+                # Handle cluster headache fallback - if cluster-specific drug not available, try CGRP mAbs
+                if 'Cluster' in parsed_drug and 'CGRP mAbs' in state_drugs:
+                    drug_index = state_drugs.index('CGRP mAbs')
+                    st.info(f"ℹ️ '{parsed_drug}' not available in {edited_state}. Using 'CGRP mAbs' (Emgality is FDA-approved for cluster headache).")
+                # If drug class not found but CGRP mAbs exists, default to that instead of Botox
+                elif 'CGRP mAbs' in state_drugs:
+                    drug_index = state_drugs.index('CGRP mAbs')
             
             edited_drug = st.selectbox("Drug Class", options=state_drugs, index=drug_index)
             
@@ -2060,22 +2070,32 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
                 st.rerun()
         
         # Search button with celebration
-        
-        # Search button with celebration
         if st.button("🔎 Search with Extracted Data", type="primary", use_container_width=True):
+            # Determine the drug class to search for
+            search_drug_class = parsed.get('drug_class')
+            
+            # Handle cluster headache drug class fallback
+            if search_drug_class and 'Cluster' in search_drug_class:
+                state_drugs = db_b[db_b['State'] == parsed.get('state')]['Drug_Class'].unique().tolist()
+                if search_drug_class not in state_drugs and 'CGRP mAbs' in state_drugs:
+                    search_drug_class = 'CGRP mAbs'  # Fall back to CGRP mAbs for cluster
+            
             # Perform search with national fallback support
             query, fallback_used, fallback_message = search_policies_with_fallback(
                 db_b,
                 state=parsed.get('state'),
                 payer=parsed.get('payer'),
-                drug_class=parsed.get('drug_class')
+                drug_class=search_drug_class
             )
             
             # Filter by diagnosis - but DON'T double-filter if drug_class already contains the diagnosis
             if parsed.get('diagnosis') == "Cluster Headache":
-                # Only apply if not already filtered to a cluster drug
+                # Only apply cluster filter if we actually have cluster-specific policies
                 if parsed.get('drug_class') and 'Cluster' not in parsed.get('drug_class', ''):
-                    query = query[query['Drug_Class'].str.contains('Cluster', case=False, na=False)]
+                    cluster_filtered = query[query['Drug_Class'].str.contains('Cluster', case=False, na=False)]
+                    # Only use cluster filter if it returns results, otherwise keep CGRP mAbs
+                    if not cluster_filtered.empty:
+                        query = cluster_filtered
             elif parsed.get('diagnosis') == "Chronic Migraine":
                 # Only filter if needed
                 if not query.empty:
