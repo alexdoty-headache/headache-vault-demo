@@ -1187,6 +1187,93 @@ Return ONLY the JSON object with all fields filled in. If you see ANY mention of
         st.error(f"API Error: {str(e)}")
         return None
 
+# ============================================================================
+# HIPAA ACKNOWLEDGMENT MODAL - Must acknowledge before using app
+# ============================================================================
+if 'hipaa_acknowledged' not in st.session_state:
+    st.session_state.hipaa_acknowledged = False
+
+if not st.session_state.hipaa_acknowledged:
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #4B0082 0%, #6A0DAD 100%); 
+                color: white; padding: 2rem; border-radius: 12px; margin-bottom: 1rem; text-align: center;">
+        <div style="font-size: 2rem; margin-bottom: 0.5rem;">💊 The Headache Vault</div>
+        <div style="font-size: 1rem; opacity: 0.9;">Prior Authorization Automation Demo</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("""
+    <div style="background: #FEF3C7; border: 2px solid #F59E0B; border-radius: 12px; padding: 1.5rem; margin: 1rem 0;">
+        <div style="display: flex; align-items: flex-start; gap: 12px;">
+            <span style="font-size: 32px;">⚠️</span>
+            <div>
+                <div style="font-size: 1.25rem; font-weight: 700; color: #92400E; margin-bottom: 0.75rem;">
+                    Important: Demo Environment — NOT HIPAA Compliant
+                </div>
+                <div style="color: #78350F; font-size: 0.95rem; line-height: 1.6;">
+                    <p style="margin-bottom: 0.75rem;">
+                        This demonstration application uses external AI services (Anthropic Claude) and cloud hosting 
+                        that have <strong>NOT been configured for HIPAA compliance</strong>.
+                    </p>
+                    <p style="margin-bottom: 0.75rem; font-weight: 600;">
+                        🚫 DO NOT ENTER any Protected Health Information (PHI):
+                    </p>
+                    <ul style="margin: 0.5rem 0 0.75rem 1.25rem; padding: 0;">
+                        <li>Patient names, dates of birth, or Social Security numbers</li>
+                        <li>Medical record numbers or insurance member IDs</li>
+                        <li>Specific dates of service or appointment dates</li>
+                        <li>Addresses, phone numbers, or email addresses</li>
+                    </ul>
+                    <p style="margin-bottom: 0;">
+                        ✅ <strong>Safe to use:</strong> Age (not DOB), gender, state, insurance company name, 
+                        diagnosis codes, medication names/doses, and de-identified treatment history.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("""
+    <div style="background: #F3F4F6; border-radius: 8px; padding: 1rem; margin: 1rem 0; font-size: 0.85rem; color: #4B5563;">
+        <strong>About this Demo:</strong> The Headache Vault PA Engine demonstrates automated prior authorization 
+        workflows for headache medications. Use sample data or fully de-identified scenarios only.
+        <br><br>
+        <strong>Production Version:</strong> A HIPAA-compliant production version with BAA coverage is planned for August 2026.
+    </div>
+    """, unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        if st.button("✅ I Understand — Continue to Demo", type="primary", use_container_width=True):
+            st.session_state.hipaa_acknowledged = True
+            st.rerun()
+    
+    st.stop()  # Prevent rest of app from loading until acknowledged
+
+# ============================================================================
+# GLOBAL HIPAA WARNING BANNER - Persistent at top of every page
+# ============================================================================
+st.markdown("""
+<div style="background: linear-gradient(90deg, #DC2626 0%, #B91C1C 100%); 
+            color: white; 
+            padding: 10px 16px; 
+            border-radius: 8px; 
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9rem;">
+    <span style="font-size: 20px;">⚠️</span>
+    <div>
+        <strong>DEMO ENVIRONMENT — NOT HIPAA COMPLIANT</strong>
+        <span style="opacity: 0.9; margin-left: 8px;">
+            Do NOT enter real patient information. Use de-identified or sample data only.
+        </span>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
 # Header with Production Navigation
 st.markdown("""
 <div style="text-align: left; margin-bottom: 1rem;">
@@ -1382,6 +1469,14 @@ elif st.session_state.current_page == 'Search':
     # SIDEBAR FILTERS (uses SidebarHelper for defaults from PatientContext)
     # ============================================================================
     st.sidebar.header("🔍 Search Filters")
+    
+    # HIPAA Warning in Sidebar
+    st.sidebar.markdown("""
+<div style="background: #FEF3C7; border: 1px solid #F59E0B; border-radius: 6px; padding: 8px 10px; margin-bottom: 12px; font-size: 0.75rem;">
+    <strong style="color: #92400E;">⚠️ Demo Only</strong><br>
+    <span style="color: #78350F;">Not HIPAA compliant. Do not enter real patient data.</span>
+</div>
+""", unsafe_allow_html=True)
 
     # State selection
     states = sorted(db_b['State'].unique().tolist())
@@ -2203,17 +2298,36 @@ if st.session_state.current_page == 'Search' and st.session_state.show_moh_check
             hide_index=True
         )
 
-# Production Footer
+# Production Footer with HIPAA Disclaimer
 st.markdown("---")
 st.markdown("""
+<div style="background: #FEF2F2; border: 1px solid #FECACA; border-radius: 8px; padding: 16px; margin-bottom: 1.5rem;">
+    <div style="font-weight: 700; color: #991B1B; margin-bottom: 8px; font-size: 0.9rem;">
+        ⚖️ Legal Disclaimer — Please Read
+    </div>
+    <div style="font-size: 0.8rem; color: #7F1D1D; line-height: 1.5;">
+        <strong>NOT HIPAA COMPLIANT:</strong> The Headache Vault Demo is a prototype for demonstration and 
+        educational purposes only. This application uses external AI services (Anthropic Claude API) and 
+        cloud hosting (Streamlit) that have NOT been configured for HIPAA compliance. Do not enter Protected 
+        Health Information (PHI) including patient names, DOB, MRN, SSN, specific dates of service, or contact information.
+        <br><br>
+        <strong>NOT MEDICAL/LEGAL ADVICE:</strong> Information provided is for educational purposes only and does not 
+        constitute medical, legal, or billing advice. Always verify payer requirements directly.
+        <br><br>
+        <strong>PRODUCTION VERSION:</strong> A HIPAA-compliant version with BAA coverage is planned for August 2026. 
+        Contact info@headachevault.com for enterprise inquiries.
+    </div>
+</div>
+
 <div class="production-footer">
     <div style="margin-bottom: 1rem;">
         <span class="footer-badge">📊 CMS Data Sources</span>
         <span class="footer-badge">🏥 State DOI Verified</span>
+        <span class="footer-badge" style="background: #FEF3C7; color: #92400E;">⚠️ Demo Only</span>
     </div>
     <div style="font-size: 0.9rem; color: #262730; margin-bottom: 1rem;">
         <strong style='color: #4B0082; font-size: 1.1rem;'>The Headache Vault PA Engine</strong><br>
-        <span style='color: #5A5A5A;'>Production v1.0 | February 2026</span>
+        <span style='color: #5A5A5A;'>Demo v1.0 | February 2026</span>
     </div>
     <div style="font-size: 0.85rem; color: #5A5A5A; margin-bottom: 1rem;">
         Infrastructure to Scale Specialist-Level Care<br>
@@ -2225,7 +2339,8 @@ st.markdown("""
         🤖 Powered by <strong>Anthropic Claude AI</strong> | ⚡ Average response time: <strong>&lt;2 seconds</strong>
     </div>
     <div style="margin-top: 1rem; font-size: 0.75rem; color: #999;">
-        📅 Last Updated: January 15, 2026 | 🔄 Database refreshed daily
+        📅 Last Updated: January 15, 2026 | 🔄 Database refreshed daily<br>
+        <span style="color: #DC2626;">⚠️ NOT FOR CLINICAL USE — DEMONSTRATION ONLY</span>
     </div>
 </div>
 """, unsafe_allow_html=True)
