@@ -1,4 +1,4 @@
-Payer Name,Slug,State,Parent Organization,National Payer ID,Market Share %,LOB (Line of Business),LOB Code,Data Notes,PBM Partner,Vault Payer ID,Submission Channel,Payer-Specific URL,Standard Turnaround,Expedited Turnaround,Gold Card Status,Update Date,Extraction Status
+Payer_Name,Slug,State,Parent_Organization,National_Payer_ID,Market_Share_Pct,LOB,LOB_Code,Data_Notes,PBM_Partner,Vault_Payer_ID,Submission_Channel,Payer_Specific_URL,Standard_Turnaround,Expedited_Turnaround,Gold_Card_Status,Update_Date,Extraction_Status
 Aetna,AETNA,AK,CVS Health,60054,8.0,COM,COM,State filings estimate,CVS Caremark,AK-COM-AETNA,,,,,,,
 Aetna,AETNA,AZ,CVS Health,60054,12.0,COM,COM,State filings estimate,CVS Caremark,AZ-COM-AETNA,,,,,,,
 Aetna,AETNA,CA,CVS Health,60054,5.0,COM,COM,State filings estimate,CVS Caremark,CA-COM-AETNA,,,,,,,
