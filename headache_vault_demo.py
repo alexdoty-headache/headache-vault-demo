@@ -753,51 +753,16 @@ def search_policies_with_fallback(db_b, state, payer=None, drug_class=None):
     # Step 1: Try state-specific search
     query = db_b[db_b['State'] == state].copy()
     
-    # Apply payer filter with flexible matching
+    # Apply payer filter
     if payer:
-        # Extract key payer identifier for flexible matching
-        payer_lower = payer.lower()
-        
-        # Try to extract the core payer name for better matching
-        payer_keywords = []
-        if 'horizon' in payer_lower:
-            payer_keywords = ['horizon']
-        elif 'aetna' in payer_lower:
-            payer_keywords = ['aetna']
-        elif 'united' in payer_lower or 'uhc' in payer_lower:
-            payer_keywords = ['united', 'uhc']
-        elif 'cigna' in payer_lower:
-            payer_keywords = ['cigna']
-        elif 'anthem' in payer_lower or 'elevance' in payer_lower:
-            payer_keywords = ['anthem', 'elevance']
-        elif 'bcbs' in payer_lower or 'blue cross' in payer_lower:
-            payer_keywords = ['bcbs', 'blue cross', 'blue shield']
-        elif 'humana' in payer_lower:
-            payer_keywords = ['humana']
-        elif 'kaiser' in payer_lower:
-            payer_keywords = ['kaiser']
-        elif 'highmark' in payer_lower:
-            payer_keywords = ['highmark']
-        elif 'independence' in payer_lower:
-            payer_keywords = ['independence']
-        else:
-            # Use first significant word as keyword
-            payer_keywords = [payer.split()[0].lower()] if payer.split() else [payer_lower]
-        
-        # Build flexible payer match
-        payer_mask = pd.Series([False] * len(query))
-        for kw in payer_keywords:
-            payer_mask = payer_mask | query['Payer_Name'].str.contains(kw, case=False, na=False)
-        
-        payer_query = query[payer_mask]
+        payer_query = query[query['Payer_Name'].str.contains(payer, case=False, na=False)]
         
         # If no state match, try national fallback
         if len(payer_query) == 0:
             national_query = db_b[db_b['State'] == 'ALL'].copy()
-            national_mask = pd.Series([False] * len(national_query))
-            for kw in payer_keywords:
-                national_mask = national_mask | national_query['Payer_Name'].str.contains(kw, case=False, na=False)
-            national_payer = national_query[national_mask]
+            national_payer = national_query[
+                national_query['Payer_Name'].str.contains(payer, case=False, na=False)
+            ]
             
             if len(national_payer) > 0:
                 query = national_payer
@@ -837,12 +802,10 @@ def search_policies_with_fallback(db_b, state, payer=None, drug_class=None):
             # If still no results, try national fallback
             if len(drug_query) == 0 and not fallback_used:
                 national_query = db_b[db_b['State'] == 'ALL'].copy()
-                if payer and 'payer_keywords' in dir():
-                    # Use same flexible matching
-                    national_mask = pd.Series([False] * len(national_query))
-                    for kw in payer_keywords:
-                        national_mask = national_mask | national_query['Payer_Name'].str.contains(kw, case=False, na=False)
-                    national_query = national_query[national_mask]
+                if payer:
+                    national_query = national_query[
+                        national_query['Payer_Name'].str.contains(payer, case=False, na=False)
+                    ]
                 
                 # Try original drug class nationally
                 national_drug = national_query[national_query['Drug_Class'] == drug_class]
