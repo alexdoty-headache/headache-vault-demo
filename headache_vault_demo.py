@@ -1088,7 +1088,7 @@ def parse_clinical_note(note_text, db_a, db_b):
     
     # Get valid options from databases
     states = sorted(db_b['State'].unique().tolist())
-    payers = sorted(db_a['Payer Name'].unique().tolist())[:50]  # Top 50 for context
+    payers = sorted(db_a['Payer_Name'].unique().tolist())[:50]  # Top 50 for context
     drug_classes = sorted(db_b['Drug_Class'].unique().tolist())
     
     try:
@@ -1173,7 +1173,7 @@ Return ONLY the JSON object with all fields filled in. If you see ANY mention of
             # Validate and fuzzy-match payer name
             if parsed.get('payer'):
                 payer_input = parsed['payer'].lower().strip()
-                all_payers = db_a['Payer Name'].unique()
+                all_payers = db_a['Payer_Name'].unique()
                 
                 # Try exact match first (case insensitive)
                 exact_match = None
