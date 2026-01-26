@@ -2139,7 +2139,7 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
                         st.info("📊 Data extracted - proceed to Search to find policies.")
                     
                     # Show warning if state is missing
-                    if not collection_state.state:
+                    if collection_state and hasattr(collection_state, 'state') and not collection_state.state:
                         st.markdown("""
 <div class="required-field-box">
     <div style="font-weight: 700; color: #DC2626; margin-bottom: 0.5rem;">
