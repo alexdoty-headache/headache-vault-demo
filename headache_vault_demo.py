@@ -2118,17 +2118,23 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
                     SessionStateManager.set_from_ai_parse(parsed_data)
                     st.session_state.parsed_data = parsed_data  # Keep for backward compatibility
                     
-                    # Create and store DataCollectionState for quality tracking
-                    collection_state = analyze_parsed_data(parsed_data)
-                    st.session_state.data_collection_state = collection_state
+                     # Create and store DataCollectionState for quality tracking
+                    try:
+                        collection_state = analyze_parsed_data(parsed_data)
+                        st.session_state.data_collection_state = collection_state
+                    except Exception as e:
+                        # Fallback if parsing fails
+                        collection_state = DataCollectionState()
+                        st.session_state.data_collection_state = collection_state
                     
                     # Success celebration
                     st.balloons()
                     st.success("🎉 **Note Parsed Successfully!** Extracted patient data in 2.3 seconds.")
                     
-                    # Show quality indicator
-                    score, desc = collection_state.get_search_quality_score()
-                    st.markdown(get_quality_indicator_html(score, desc), unsafe_allow_html=True)
+                  # Show quality indicator
+                    if collection_state:
+                        score, desc = collection_state.get_search_quality_score()
+                        st.markdown(get_quality_indicator_html(score, desc), unsafe_allow_html=True)
                     
                     # Show warning if state is missing
                     if not collection_state.state:
