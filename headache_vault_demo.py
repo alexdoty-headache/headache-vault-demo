@@ -710,17 +710,29 @@ st.markdown("""
 # Load databases
 @st.cache_data
 def load_databases():
-    """Load all databases from CSV files"""
-    db_a = pd.read_csv('Database_A_FINAL_WITH_LOB_CODE.csv')
-    db_b = pd.read_csv('Database_B_CLUSTER_UPDATED.csv')
-    db_c = pd.read_csv('Database_C_CLUSTER_UPDATED.csv')
-    db_e = pd.read_csv('Database_E_Pediatric_Overrides.csv')
-    db_f = pd.read_csv('Database_F_State_Regulatory_Framework.csv')
-    icd10 = pd.read_csv('Master_ICD10_CLUSTER_UPDATED.csv')
-    therapeutic = pd.read_csv('Master_Therapeutic_Doses_CLUSTER_UPDATED.csv')
-    otc = pd.read_csv('Master_OTC_Medications.csv')
+    """
+    Load all Headache Vault databases from CSV files.
     
-    return db_a, db_b, db_c, db_e, db_f, icd10, therapeutic, otc
+    Database Schema:
+    - payer_registry: 717 payers with LOB codes, Vault_Payer_ID format
+    - payer_policies: 752 policies with step therapy, drug class taxonomy
+    - denial_codes: 35 denial scenarios with appeal strategies
+    - pediatric_overrides: 25 records with safety flags (valproate, topiramate)
+    - state_regulations: 50 states with Gold Card legislation details
+    - icd10_codes: 46 diagnosis codes with ICHD-3 mappings
+    - therapeutic_doses: 40 medications with ACP 2025 thresholds
+    - otc_medications: 28 OTC meds for MOH tracking
+    """
+    payer_registry = pd.read_csv('Payer_Registry.csv')
+    payer_policies = pd.read_csv('Payer_Policies.csv')
+    denial_codes = pd.read_csv('Denial_Codes_Appeals.csv')
+    pediatric_overrides = pd.read_csv('Pediatric_Overrides.csv')
+    state_regulations = pd.read_csv('State_Regulations.csv')
+    icd10_codes = pd.read_csv('ICD10_Diagnosis_Codes.csv')
+    therapeutic_doses = pd.read_csv('Therapeutic_Doses.csv')
+    otc_medications = pd.read_csv('OTC_Medications.csv')
+    
+    return payer_registry, payer_policies, denial_codes, pediatric_overrides, state_regulations, icd10_codes, therapeutic_doses, otc_medications
 
 # ============================================================================
 # HELPER: Get step therapy details with column name fallback
@@ -1027,7 +1039,18 @@ def check_criteria_met(step_requirements, prior_medications, diagnosis):
 SessionStateManager.initialize()
 
 # Load data
-db_a, db_b, db_c, db_e, db_f, icd10, therapeutic, otc = load_databases()
+# Unpack databases with descriptive names
+payer_registry, payer_policies, denial_codes, pediatric_overrides, state_regulations, icd10_codes, therapeutic_doses, otc_medications = load_databases()
+
+# Create aliases for backward compatibility during transition
+db_a = payer_registry
+db_b = payer_policies
+db_c = denial_codes
+db_e = pediatric_overrides
+db_f = state_regulations
+icd10 = icd10_codes
+therapeutic = therapeutic_doses
+otc = otc_medications
 
 # Helper function to create copy button HTML
 def create_copy_button(text, button_id):
