@@ -209,6 +209,9 @@ class SessionStateManager:
         Maps the AI parser's JSON output to the PatientContext fields
         and marks the source as 'ai_parsed'.
         
+        IMPORTANT: We preserve None values from AI parser to avoid
+        displaying hallucinated default values (like PA/35).
+        
         Args:
             parsed_data: Dictionary from Claude API parse response
         
@@ -228,7 +231,8 @@ class SessionStateManager:
             'confidence': parsed_data.get('confidence', 'low'),
         }
         
-        # Only update non-None values
+        # Only update non-None values for the context object
+        # (context needs values for its operations)
         updates = {k: v for k, v in mapping.items() if v is not None}
         
         ctx.update(**updates)
@@ -240,8 +244,11 @@ class SessionStateManager:
         
         st.session_state.patient_context = ctx
         
-        # Also store in legacy format for backward compatibility
+        # Store parsed_data AS-IS - don't modify it!
+        # This preserves None values so UI can show "not detected" warnings
         st.session_state.parsed_data = parsed_data
+        
+        # Sync legacy state (but don't overwrite parsed_data)
         cls._sync_legacy_state(ctx)
         
         return ctx
@@ -253,22 +260,20 @@ class SessionStateManager:
         
         This ensures components still using the old session state format
         continue to work during migration.
+        
+        IMPORTANT: We only sync non-default values to avoid overwriting
+        intentional None/null values from the AI parser with defaults.
         """
-        st.session_state.patient_age = ctx.age
+        # Only sync age if it's not the default (indicates AI actually extracted it)
+        if ctx.source == 'ai_parsed':
+            # Don't overwrite - let the original parsed_data values stand
+            # The ctx may have defaults that shouldn't override parsed nulls
+            pass
+        else:
+            st.session_state.patient_age = ctx.age
         
-        # Update parsed_data if it exists
-        if st.session_state.parsed_data is None:
-            st.session_state.parsed_data = {}
-        
-        st.session_state.parsed_data.update({
-            'state': ctx.state,
-            'payer': ctx.payer,
-            'drug_class': ctx.drug_class,
-            'diagnosis': ctx.diagnosis,
-            'age': ctx.age,
-            'prior_medications': ctx.prior_medications,
-            'confidence': ctx.confidence,
-        })
+        # DON'T update parsed_data - it already has the correct values from AI
+        # The old code was overwriting None values with defaults, causing hallucination display
     
     @classmethod
     def clear_context(cls) -> None:

@@ -2273,7 +2273,7 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
                     
                     # Success celebration
                     st.balloons()
-                    st.success("🎉 **Note Parsed Successfully!** [v8-NO-DEFAULTS] Extracted patient data.")
+                    st.success("🎉 **Note Parsed Successfully!** [v9-DATAFLOW-FIX] Extracted patient data.")
                     
                     # DEBUG: Show what we got from parser
                     st.info(f"🔬 DEBUG: State={parsed_data.get('state')}, Age={parsed_data.get('age')}, Log={parsed_data.get('_validation_log')}")
