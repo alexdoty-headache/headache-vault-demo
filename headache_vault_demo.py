@@ -66,6 +66,194 @@ class DataCollectionState:
         else:
             return score, "Insufficient - State required"
 
+# ============================================================================
+# MEDICATION TRIAL TRACKING & GAP ANALYSIS
+# ============================================================================
+
+@dataclass
+class MedicationTrial:
+    """Tracks details of a single medication trial for step therapy documentation."""
+    medication_name: str
+    drug_class: Optional[str] = None  # Beta-blocker, Anticonvulsant, etc.
+    dose: Optional[str] = None  # e.g., "100mg/day"
+    duration_weeks: Optional[int] = None  # Duration in weeks
+    reason_stopped: Optional[str] = None  # Ineffective, Side effects, etc.
+    details_complete: bool = False
+    
+    # Reference data (from Therapeutic_Doses.csv)
+    therapeutic_dose_min: Optional[int] = None
+    therapeutic_dose_max: Optional[int] = None
+    recommended_duration_weeks: Optional[int] = None
+    
+    def calculate_completeness(self) -> Tuple[int, List[str]]:
+        """Returns (percent_complete, list_of_missing_fields)"""
+        required_fields = ['dose', 'duration_weeks', 'reason_stopped']
+        missing = []
+        
+        if not self.dose:
+            missing.append('dose')
+        if not self.duration_weeks:
+            missing.append('duration')
+        if not self.reason_stopped:
+            missing.append('reason stopped')
+        
+        complete = len(required_fields) - len(missing)
+        percent = int((complete / len(required_fields)) * 100)
+        return percent, missing
+    
+    def is_adequate_trial(self) -> Tuple[bool, str]:
+        """Check if trial meets therapeutic standards."""
+        if not self.dose or not self.duration_weeks:
+            return False, "Missing dose or duration"
+        
+        # Check duration (most require 8 weeks)
+        min_weeks = self.recommended_duration_weeks or 8
+        if self.duration_weeks < min_weeks:
+            return False, f"Trial too short ({self.duration_weeks} weeks vs {min_weeks} required)"
+        
+        return True, "Adequate trial documented"
+
+@dataclass 
+class GapAnalysis:
+    """Analyzes gaps between extracted data and PA requirements."""
+    policy_requirements: dict  # From payer policy row
+    extracted_medications: List[MedicationTrial]
+    diagnosis: Optional[str] = None
+    headache_days: Optional[int] = None
+    
+    # Calculated fields
+    required_med_classes: int = 2
+    classes_documented: int = 0
+    classes_with_complete_details: int = 0
+    missing_details: List[dict] = field(default_factory=list)
+    
+    def analyze(self) -> dict:
+        """Perform gap analysis and return structured results."""
+        results = {
+            'ready_for_pa': False,
+            'medication_gaps': [],
+            'documentation_gaps': [],
+            'recommendations': [],
+            'completeness_score': 0
+        }
+        
+        # Determine how many medication classes are required
+        step_req = self.policy_requirements.get('Step_1_Requirement', '').lower()
+        if '2 oral preventive' in step_req or '≥2' in step_req:
+            self.required_med_classes = 2
+        elif '1 oral preventive' in step_req or '≥1' in step_req:
+            self.required_med_classes = 1
+        elif 'triptan' in step_req:
+            self.required_med_classes = 1 if '1' in step_req else 2
+        
+        # Count documented classes
+        classes_found = set()
+        for med in self.extracted_medications:
+            if med.drug_class:
+                classes_found.add(med.drug_class)
+                completeness, missing = med.calculate_completeness()
+                
+                if missing:
+                    results['medication_gaps'].append({
+                        'medication': med.medication_name,
+                        'class': med.drug_class,
+                        'missing': missing,
+                        'completeness': completeness
+                    })
+                else:
+                    self.classes_with_complete_details += 1
+        
+        self.classes_documented = len(classes_found)
+        
+        # Check if we have enough classes
+        if self.classes_documented < self.required_med_classes:
+            results['documentation_gaps'].append(
+                f"Need {self.required_med_classes} medication classes, only {self.classes_documented} documented"
+            )
+            results['recommendations'].append(
+                f"Document {self.required_med_classes - self.classes_documented} more failed medication(s)"
+            )
+        
+        # Check completeness of documented medications
+        if results['medication_gaps']:
+            results['recommendations'].append(
+                "Complete missing details (dose, duration, reason stopped) for documented medications"
+            )
+        
+        # Calculate overall completeness
+        if self.required_med_classes > 0:
+            class_score = min(100, (self.classes_documented / self.required_med_classes) * 50)
+            detail_score = (self.classes_with_complete_details / max(1, self.classes_documented)) * 50
+            results['completeness_score'] = int(class_score + detail_score)
+        
+        # Determine if ready for PA
+        results['ready_for_pa'] = (
+            self.classes_documented >= self.required_med_classes and
+            len(results['medication_gaps']) == 0
+        )
+        
+        return results
+
+
+# Therapeutic dose reference data (from Therapeutic_Doses.csv)
+THERAPEUTIC_DOSES = {
+    'propranolol': {'class': 'Beta-blocker', 'min_dose': 80, 'max_dose': 240, 'unit': 'mg/day', 'min_weeks': 8},
+    'metoprolol': {'class': 'Beta-blocker', 'min_dose': 100, 'max_dose': 200, 'unit': 'mg/day', 'min_weeks': 8},
+    'atenolol': {'class': 'Beta-blocker', 'min_dose': 50, 'max_dose': 200, 'unit': 'mg/day', 'min_weeks': 8},
+    'topiramate': {'class': 'Anticonvulsant', 'min_dose': 100, 'max_dose': 200, 'unit': 'mg/day', 'min_weeks': 8},
+    'valproate': {'class': 'Anticonvulsant', 'min_dose': 500, 'max_dose': 1500, 'unit': 'mg/day', 'min_weeks': 8},
+    'divalproex': {'class': 'Anticonvulsant', 'min_dose': 500, 'max_dose': 1500, 'unit': 'mg/day', 'min_weeks': 8},
+    'gabapentin': {'class': 'Anticonvulsant', 'min_dose': 1200, 'max_dose': 2400, 'unit': 'mg/day', 'min_weeks': 8},
+    'amitriptyline': {'class': 'Antidepressant', 'min_dose': 50, 'max_dose': 150, 'unit': 'mg/day', 'min_weeks': 8},
+    'nortriptyline': {'class': 'Antidepressant', 'min_dose': 50, 'max_dose': 150, 'unit': 'mg/day', 'min_weeks': 8},
+    'venlafaxine': {'class': 'Antidepressant', 'min_dose': 150, 'max_dose': 225, 'unit': 'mg/day', 'min_weeks': 8},
+    'duloxetine': {'class': 'Antidepressant', 'min_dose': 60, 'max_dose': 120, 'unit': 'mg/day', 'min_weeks': 8},
+    'verapamil': {'class': 'CCB', 'min_dose': 240, 'max_dose': 960, 'unit': 'mg/day', 'min_weeks': 4},
+    'sumatriptan': {'class': 'Triptan', 'min_dose': 50, 'max_dose': 100, 'unit': 'mg/dose', 'min_weeks': 4},
+    'rizatriptan': {'class': 'Triptan', 'min_dose': 5, 'max_dose': 10, 'unit': 'mg/dose', 'min_weeks': 4},
+    'eletriptan': {'class': 'Triptan', 'min_dose': 20, 'max_dose': 40, 'unit': 'mg/dose', 'min_weeks': 4},
+    'zolmitriptan': {'class': 'Triptan', 'min_dose': 2.5, 'max_dose': 5, 'unit': 'mg/dose', 'min_weeks': 4},
+}
+
+DISCONTINUATION_REASONS = [
+    "Ineffective - less than 50% reduction",
+    "Ineffective - no improvement",
+    "Side effects - intolerable",
+    "Side effects - cognitive",
+    "Side effects - weight changes", 
+    "Side effects - fatigue",
+    "Side effects - GI issues",
+    "Contraindicated",
+    "Patient preference",
+    "Cost/access issues",
+    "Other"
+]
+
+def create_medication_trials_from_parsed(prior_medications: List[str]) -> List[MedicationTrial]:
+    """Convert parsed medication names into MedicationTrial objects with reference data."""
+    trials = []
+    
+    for med_name in prior_medications:
+        med_lower = med_name.lower().strip()
+        
+        # Find matching therapeutic reference
+        matched_ref = None
+        for ref_name, ref_data in THERAPEUTIC_DOSES.items():
+            if ref_name in med_lower:
+                matched_ref = (ref_name, ref_data)
+                break
+        
+        trial = MedicationTrial(
+            medication_name=med_name.title(),
+            drug_class=matched_ref[1]['class'] if matched_ref else None,
+            therapeutic_dose_min=matched_ref[1]['min_dose'] if matched_ref else None,
+            therapeutic_dose_max=matched_ref[1]['max_dose'] if matched_ref else None,
+            recommended_duration_weeks=matched_ref[1]['min_weeks'] if matched_ref else 8
+        )
+        trials.append(trial)
+    
+    return trials
+
 # Page configuration
 st.set_page_config(
     page_title="The Headache Vault - PA Automation Demo",
@@ -867,6 +1055,176 @@ def get_quality_indicator_html(score: int, description: str) -> str:
         <strong>Search Quality: {score}%</strong> — {description}
     </div>
     '''
+
+def render_gap_analysis_ui(policy_row: dict, medication_trials: List[MedicationTrial], unique_key: str) -> Tuple[bool, List[MedicationTrial]]:
+    """
+    Render the gap analysis UI for a specific policy.
+    Returns (ready_for_pa, updated_medication_trials)
+    """
+    # Perform gap analysis
+    gap = GapAnalysis(
+        policy_requirements=policy_row,
+        extracted_medications=medication_trials
+    )
+    results = gap.analyze()
+    
+    # Header with completeness score
+    completeness = results['completeness_score']
+    if completeness >= 100:
+        status_color = "#059669"  # Green
+        status_icon = "✅"
+        status_text = "Ready for PA"
+    elif completeness >= 50:
+        status_color = "#D97706"  # Amber
+        status_icon = "⚠️"
+        status_text = "Missing Details"
+    else:
+        status_color = "#DC2626"  # Red
+        status_icon = "🔴"
+        status_text = "Incomplete"
+    
+    st.markdown(f"""
+    <div style="background: linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%); 
+                border: 2px solid {status_color}; border-radius: 12px; padding: 1.25rem; margin: 1rem 0;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <div style="font-weight: 700; color: #1E293B; font-size: 1.1rem;">
+                📋 Step Therapy Documentation Check
+            </div>
+            <div style="background: {status_color}; color: white; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem;">
+                {status_icon} {status_text} ({completeness}%)
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    # Show what's required
+    step_req = policy_row.get('Step_1_Requirement', 'Not specified')
+    step_duration = policy_row.get('Step_1_Duration', '8 weeks each')
+    
+    st.markdown(f"""
+        <div style="background: white; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+            <div style="color: #64748B; font-size: 0.85rem; margin-bottom: 0.25rem;">Policy Requirement</div>
+            <div style="color: #1E293B; font-weight: 600;">{step_req}</div>
+            <div style="color: #64748B; font-size: 0.85rem; margin-top: 0.25rem;">Duration: {step_duration}</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # If there are gaps, show the medication detail form
+    updated_trials = medication_trials.copy()
+    
+    if results['medication_gaps'] or not results['ready_for_pa']:
+        st.markdown("#### 💊 Complete Medication Details")
+        st.markdown("*Fill in missing details to generate a strong PA letter:*")
+        
+        for i, trial in enumerate(medication_trials):
+            completeness_pct, missing = trial.calculate_completeness()
+            
+            # Medication card header
+            if completeness_pct == 100:
+                med_status = "✅"
+                border_color = "#059669"
+            elif completeness_pct > 0:
+                med_status = "⚠️"
+                border_color = "#D97706"
+            else:
+                med_status = "🔴"
+                border_color = "#DC2626"
+            
+            with st.container():
+                st.markdown(f"""
+                <div style="border-left: 4px solid {border_color}; padding-left: 1rem; margin: 1rem 0;">
+                    <div style="font-weight: 600; color: #1E293B; font-size: 1rem;">
+                        {med_status} {trial.medication_name}
+                        <span style="color: #64748B; font-weight: 400; font-size: 0.85rem; margin-left: 0.5rem;">
+                            ({trial.drug_class or 'Unknown class'})
+                        </span>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Input fields in columns
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    # Dose input with reference info
+                    dose_help = ""
+                    if trial.therapeutic_dose_min and trial.therapeutic_dose_max:
+                        dose_help = f"Therapeutic: {trial.therapeutic_dose_min}-{trial.therapeutic_dose_max} mg/day"
+                    
+                    dose_input = st.text_input(
+                        "Dose",
+                        value=trial.dose or "",
+                        placeholder="e.g., 100mg/day",
+                        key=f"dose_{unique_key}_{i}",
+                        help=dose_help
+                    )
+                    if dose_input:
+                        updated_trials[i].dose = dose_input
+                
+                with col2:
+                    # Duration input
+                    duration_help = f"Minimum recommended: {trial.recommended_duration_weeks or 8} weeks"
+                    duration_input = st.number_input(
+                        "Duration (weeks)",
+                        min_value=1,
+                        max_value=52,
+                        value=trial.duration_weeks or 8,
+                        key=f"duration_{unique_key}_{i}",
+                        help=duration_help
+                    )
+                    updated_trials[i].duration_weeks = duration_input
+                
+                with col3:
+                    # Reason stopped dropdown
+                    reason_options = ["Select reason..."] + DISCONTINUATION_REASONS
+                    current_idx = 0
+                    if trial.reason_stopped and trial.reason_stopped in DISCONTINUATION_REASONS:
+                        current_idx = DISCONTINUATION_REASONS.index(trial.reason_stopped) + 1
+                    
+                    reason_input = st.selectbox(
+                        "Reason Stopped",
+                        options=reason_options,
+                        index=current_idx,
+                        key=f"reason_{unique_key}_{i}"
+                    )
+                    if reason_input != "Select reason...":
+                        updated_trials[i].reason_stopped = reason_input
+        
+        # Option to add another medication
+        st.markdown("---")
+        with st.expander("➕ Add Another Failed Medication"):
+            add_col1, add_col2 = st.columns(2)
+            with add_col1:
+                new_med_name = st.text_input(
+                    "Medication Name",
+                    placeholder="e.g., Topiramate",
+                    key=f"new_med_{unique_key}"
+                )
+            with add_col2:
+                new_med_class = st.selectbox(
+                    "Drug Class",
+                    options=["Select...", "Beta-blocker", "Anticonvulsant", "Antidepressant", "CCB", "Triptan", "Other"],
+                    key=f"new_class_{unique_key}"
+                )
+            
+            if st.button("Add Medication", key=f"add_med_btn_{unique_key}"):
+                if new_med_name and new_med_class != "Select...":
+                    new_trial = MedicationTrial(
+                        medication_name=new_med_name.title(),
+                        drug_class=new_med_class
+                    )
+                    updated_trials.append(new_trial)
+                    st.success(f"Added {new_med_name}")
+                    st.rerun()
+    
+    # Re-check if ready after potential updates
+    updated_gap = GapAnalysis(
+        policy_requirements=policy_row,
+        extracted_medications=updated_trials
+    )
+    updated_results = updated_gap.analyze()
+    
+    return updated_results['ready_for_pa'], updated_trials
 
 # ============================================================================
 # NATIONAL FALLBACK SEARCH - Added Jan 2026
@@ -1811,8 +2169,37 @@ Policy Requirement: {step_req}
 Required Duration: {step_dur}
 
 """
-                    # Add parsed prior medications if available
-                    if prior_meds:
+                    # Check for enriched medication trial data first
+                    session_key = f"medication_trials_{selected_idx}"
+                    if session_key in st.session_state and st.session_state[session_key]:
+                        medication_trials = st.session_state[session_key]
+                        pa_text += """DOCUMENTED PRIOR MEDICATION TRIALS
+──────────────────────────────────
+"""
+                        for i, trial in enumerate(medication_trials, 1):
+                            # Format each trial with available details
+                            trial_line = f"  {i}. {trial.medication_name}"
+                            if trial.drug_class:
+                                trial_line += f" ({trial.drug_class})"
+                            pa_text += trial_line + "\n"
+                            
+                            details = []
+                            if trial.dose:
+                                details.append(f"Dose: {trial.dose}")
+                            if trial.duration_weeks:
+                                details.append(f"Duration: {trial.duration_weeks} weeks")
+                            if trial.reason_stopped:
+                                details.append(f"Discontinued: {trial.reason_stopped}")
+                            
+                            if details:
+                                pa_text += f"     → {' | '.join(details)}\n"
+                            pa_text += "\n"
+                        
+                        pa_text += """  ✓ Patient has completed required step therapy trials as documented above.
+
+"""
+                    # Fall back to simple medication list if no enriched data
+                    elif prior_meds:
                         pa_text += """DOCUMENTED PRIOR MEDICATION TRIALS
 ──────────────────────────────────
 """
@@ -2233,13 +2620,58 @@ Step Therapy: REQUIRED ({step_req}, {step_dur})
                     </div>
                     """, unsafe_allow_html=True)
                 
+                # ================================================================
+                # GAP ANALYSIS - Show when step therapy is required and we have parsed data
+                # ================================================================
+                ready_for_pa = True  # Default to ready if no step therapy
+                
+                if row['Step_Therapy_Required'] == 'Yes' and 'parsed_data' in st.session_state:
+                    prior_meds = st.session_state.parsed_data.get('prior_medications', [])
+                    
+                    if prior_meds:
+                        # Convert to MedicationTrial objects
+                        session_key = f"medication_trials_{idx}"
+                        if session_key not in st.session_state:
+                            st.session_state[session_key] = create_medication_trials_from_parsed(prior_meds)
+                        
+                        medication_trials = st.session_state[session_key]
+                        
+                        # Render gap analysis UI
+                        with st.expander("📋 Complete Step Therapy Documentation", expanded=True):
+                            ready_for_pa, updated_trials = render_gap_analysis_ui(
+                                policy_row=row.to_dict(),
+                                medication_trials=medication_trials,
+                                unique_key=f"gap_{idx}"
+                            )
+                            
+                            # Update session state with any changes
+                            st.session_state[session_key] = updated_trials
+                    else:
+                        # No prior medications documented
+                        st.markdown("""
+                        <div style="background: #FEF3C7; border: 2px solid #F59E0B; border-radius: 12px; padding: 1.25rem; margin: 1rem 0;">
+                            <div style="font-weight: 700; color: #92400E; font-size: 1rem; margin-bottom: 0.5rem;">
+                                ⚠️ No Prior Medications Documented
+                            </div>
+                            <div style="color: #78350F;">
+                                This payer requires step therapy. To generate a successful PA letter, document the patient's prior medication trials in the clinical note on the <strong>Paste Notes</strong> page.
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        ready_for_pa = False
+                
                 # Single primary action button - Generate PA
                 col1, col2 = st.columns([3, 9])
                 with col1:
-                    if st.button("🎯 Generate PA Letter", key=f"pa_{idx}", type="primary", use_container_width=True):
-                        st.session_state.show_pa_text = True
-                        st.session_state.selected_policy_idx = idx
-                        st.rerun()
+                    if ready_for_pa:
+                        if st.button("🎯 Generate PA Letter", key=f"pa_{idx}", type="primary", use_container_width=True):
+                            st.session_state.show_pa_text = True
+                            st.session_state.selected_policy_idx = idx
+                            st.rerun()
+                    else:
+                        # Show disabled button with guidance
+                        st.button("🎯 Complete Details Above", key=f"pa_{idx}", type="secondary", use_container_width=True, disabled=True)
+                        st.caption("Fill in missing medication details to enable PA generation")
                 
                 st.markdown("<br>", unsafe_allow_html=True)
 
