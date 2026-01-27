@@ -1403,6 +1403,49 @@ Return ONLY the JSON object. Use null for ANY field where information is not exp
             json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
             if json_match:
                 parsed = json.loads(json_match.group())
+                # ALSO validate this fallback path - same logic as above
+                note_lower = note_text.lower()
+                validation_log = []
+                
+                # Validate STATE
+                if parsed.get('state'):
+                    state_code = parsed['state'].upper()
+                    state_indicators = {
+                        'PA': ['pennsylvania', 'philadelphia', 'pittsburgh', 'harrisburg', ' pa ', ' pa.'],
+                        'NY': ['new york', 'manhattan', 'brooklyn', 'buffalo', ' ny ', ' ny.'],
+                        'CA': ['california', 'los angeles', 'san francisco', 'san diego', ' ca ', ' ca.'],
+                        'TX': ['texas', 'houston', 'dallas', 'austin', 'san antonio', ' tx ', ' tx.'],
+                        'FL': ['florida', 'miami', 'orlando', 'tampa', 'jacksonville', ' fl ', ' fl.'],
+                        'IL': ['illinois', 'chicago', ' il ', ' il.'],
+                        'OH': ['ohio', 'cleveland', 'columbus', 'cincinnati', ' oh ', ' oh.'],
+                        'NJ': ['new jersey', 'newark', 'jersey city', ' nj ', ' nj.'],
+                        'MA': ['massachusetts', 'boston', ' ma ', ' ma.'],
+                        'GA': ['georgia', 'atlanta', ' ga ', ' ga.'],
+                        'NC': ['north carolina', 'charlotte', 'raleigh', ' nc ', ' nc.'],
+                        'MI': ['michigan', 'detroit', ' mi ', ' mi.'],
+                        'AZ': ['arizona', 'phoenix', 'tucson', ' az ', ' az.'],
+                        'WA': ['washington state', 'seattle', ' wa ', ' wa.'],
+                        'CO': ['colorado', 'denver', ' co ', ' co.'],
+                    }
+                    indicators = state_indicators.get(state_code, [state_code.lower()])
+                    state_found = any(ind in note_lower for ind in indicators)
+                    if not state_found:
+                        validation_log.append(f"Removed hallucinated state: {parsed['state']}")
+                        parsed['state'] = None
+                
+                # Validate AGE
+                if parsed.get('age'):
+                    age_patterns = [
+                        r'\b\d{1,3}\s*(?:year|yr|y/?o|years?\s*old)\b',
+                        r'\b(?:age|aged)\s*\d{1,3}\b',
+                        r'\b\d{1,3}\s*(?:yo|y\.o\.)\b',
+                    ]
+                    age_found = any(re.search(pattern, note_lower) for pattern in age_patterns)
+                    if not age_found:
+                        validation_log.append(f"Removed hallucinated age: {parsed['age']}")
+                        parsed['age'] = None
+                
+                parsed['_validation_log'] = validation_log
                 return parsed
             else:
                 st.error("Failed to parse API response")
@@ -2216,7 +2259,7 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
                     
                     # Success celebration
                     st.balloons()
-                    st.success("🎉 **Note Parsed Successfully!** [v4-DEBUG] Extracted patient data in 2.3 seconds.")
+                    st.success("🎉 **Note Parsed Successfully!** [v5-FALLBACK-FIX] Extracted patient data in 2.3 seconds.")
                     
                     # DEBUG: Show what we got from parser
                     st.info(f"🔬 DEBUG: State={parsed_data.get('state')}, Age={parsed_data.get('age')}, Log={parsed_data.get('_validation_log')}")
