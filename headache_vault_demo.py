@@ -1224,7 +1224,211 @@ def render_gap_analysis_ui(policy_row: dict, medication_trials: List[MedicationT
     )
     updated_results = updated_gap.analyze()
     
+    # If still not ready, show Next Steps guidance
+    if not updated_results['ready_for_pa']:
+        render_next_steps_guidance(
+            policy_row=policy_row,
+            gap_results=updated_results,
+            medication_trials=updated_trials,
+            unique_key=unique_key
+        )
+    
     return updated_results['ready_for_pa'], updated_trials
+
+
+def render_next_steps_guidance(policy_row: dict, gap_results: dict, medication_trials: List[MedicationTrial], unique_key: str):
+    """
+    Render guidance for cases that don't meet PA requirements.
+    Focuses on process/workflow options without making clinical recommendations.
+    """
+    step_req = policy_row.get('Step_1_Requirement', 'Not specified')
+    
+    # Count what we have
+    classes_documented = len(set(t.drug_class for t in medication_trials if t.drug_class))
+    
+    # Determine what's needed based on policy
+    required_classes = 2  # Default
+    if '1 oral preventive' in step_req.lower() or '≥1' in step_req:
+        required_classes = 1
+    elif '2 oral preventive' in step_req.lower() or '≥2' in step_req:
+        required_classes = 2
+    elif '3' in step_req:
+        required_classes = 3
+    
+    classes_needed = max(0, required_classes - classes_documented)
+    
+    st.markdown("---")
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%); 
+                border: 2px solid #F59E0B; border-radius: 12px; padding: 1.5rem; margin: 1rem 0;">
+        <div style="font-weight: 700; color: #92400E; font-size: 1.15rem; margin-bottom: 1rem;">
+            📋 This PA Requires Additional Documentation
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Show the gap summary
+    st.markdown(f"""
+    <div style="background: white; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; border: 1px solid #E5E7EB;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+            <span style="color: #64748B;">Policy requires:</span>
+            <span style="color: #1E293B; font-weight: 600;">{step_req}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+            <span style="color: #64748B;">Currently documented:</span>
+            <span style="color: {'#059669' if classes_documented >= required_classes else '#DC2626'}; font-weight: 600;">
+                {classes_documented} of {required_classes} medication class{'es' if required_classes > 1 else ''}
+            </span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("#### Your Options")
+    
+    # Option 1: Document another trial (if classes are missing)
+    if classes_needed > 0:
+        with st.expander("📝 **Option 1: Document Additional Trial(s)**", expanded=True):
+            st.markdown(f"""
+            If the patient has tried other preventive medications that aren't documented in the note, 
+            you can add them above or update the clinical note.
+            
+            **What to document for each medication:**
+            - Medication name and dose
+            - Duration of trial (typically 8+ weeks required)
+            - Reason for discontinuation
+            """)
+            
+            # Template for documentation
+            st.markdown("**Documentation template:**")
+            st.code("""Patient also completed trial of [MEDICATION NAME] at [DOSE] 
+for [DURATION] weeks from [START DATE] to [END DATE]. 
+Treatment was discontinued due to [REASON: inefficacy/side effects/etc.].""", language=None)
+    
+    # Option 2: Medical necessity exception
+    with st.expander("📋 **Option 2: Request Medical Necessity Exception**", expanded=False):
+        st.markdown("""
+        If the patient has valid reasons why they cannot complete the required step therapy, 
+        you may request an exception. 
+        
+        **Common grounds for exceptions** (check if applicable):
+        """)
+        
+        exception_reasons = [
+            ("Cardiovascular contraindication", "Beta-blockers contraindicated due to bradycardia, heart block, asthma, etc."),
+            ("Pregnancy or planning pregnancy", "Valproate and topiramate are teratogenic"),
+            ("Prior adverse reaction", "Documented serious adverse event to required medication class"),
+            ("Drug interaction", "Required medication interacts with current essential therapy"),
+            ("Already tried outside your care", "Patient completed trials with previous provider (obtain records)"),
+        ]
+        
+        for reason, explanation in exception_reasons:
+            st.checkbox(reason, key=f"exception_{unique_key}_{reason[:10]}", help=explanation)
+        
+        st.markdown("---")
+        st.markdown("**Exception request template:**")
+        st.code("""MEDICAL NECESSITY EXCEPTION REQUEST
+
+Patient cannot complete standard step therapy due to:
+☐ [SPECIFIC CONTRAINDICATION/REASON]
+
+Clinical documentation:
+• [RELEVANT DIAGNOSIS OR CONDITION]
+• [SUPPORTING LAB VALUES OR TEST RESULTS IF APPLICABLE]
+
+The requested medication is medically necessary because:
+• Standard step therapy poses unacceptable risk due to [REASON]
+• No suitable alternatives exist within the required medication classes
+• Delay in treatment would result in [CLINICAL CONSEQUENCE]
+
+References:
+• [RELEVANT GUIDELINE OR LITERATURE IF APPLICABLE]""", language=None)
+    
+    # Option 3: Refer to specialist
+    with st.expander("👨‍⚕️ **Option 3: Refer to Headache Specialist**", expanded=False):
+        st.markdown("""
+        For complex cases, a headache specialist may be able to:
+        - Provide additional documentation supporting medical necessity
+        - Navigate complex step therapy requirements
+        - Offer treatments not typically managed in primary care
+        - Serve as a resource for appeals if PA is denied
+        """)
+        
+        # Get state from context if available
+        patient_state = policy_row.get('State', 'your state')
+        if patient_state and patient_state != 'ALL':
+            st.info(f"💡 Use the **Headache Vault Index** in Clinical Tools to find specialists in {patient_state}")
+        
+        st.markdown("""
+        **Referral letter template:**
+        """)
+        st.code("""Dear Colleague,
+
+I am referring this patient for headache specialty consultation.
+
+Diagnosis: [DIAGNOSIS]
+Current frequency: [X] headache days per month
+
+Prior treatments attempted:
+• [MEDICATION 1]: [OUTCOME]
+• [MEDICATION 2]: [OUTCOME]
+
+Reason for referral:
+The patient's insurance requires [SPECIFIC STEP THERAPY] prior to approval 
+of [REQUESTED MEDICATION]. I am seeking your expertise in managing this 
+complex case and/or supporting a medical necessity exception.
+
+Thank you for your consultation.""", language=None)
+    
+    # Option 4: Begin required step therapy
+    with st.expander("⏱️ **Option 4: Begin Required Step Therapy**", expanded=False):
+        st.markdown("""
+        If clinically appropriate, you may choose to start the patient on the required 
+        step therapy medication(s).
+        
+        **Typical requirements:**
+        - Minimum 8 weeks at therapeutic dose
+        - Document specific reason for discontinuation
+        - Some policies accept trials from any time in patient history
+        
+        **Common oral preventives by class:**
+        """)
+        
+        preventive_table = """
+| Class | Medications | Typical Therapeutic Dose | Common Side Effects |
+|-------|------------|-------------------------|---------------------|
+| Beta-blocker | Propranolol, Metoprolol | 80-240 mg/day | Fatigue, bradycardia |
+| Anticonvulsant | Topiramate, Valproate | 100-200 mg/day | Cognitive effects, weight changes |
+| Antidepressant | Amitriptyline, Venlafaxine | 50-150 mg/day | Sedation, dry mouth |
+| CCB | Verapamil | 240-480 mg/day | Constipation, edema |
+"""
+        st.markdown(preventive_table)
+        
+        st.warning("""
+        ⚠️ **Note:** This table is for reference only. Medication selection should be based on 
+        individual patient factors, contraindications, and clinical judgment.
+        """)
+    
+    # Option 5: Submit PA anyway (for documentation/appeal setup)
+    with st.expander("📤 **Option 5: Submit PA for Denial (to enable appeal)**", expanded=False):
+        st.markdown("""
+        In some cases, it may be strategic to submit the PA request knowing it will likely be denied:
+        
+        **Why submit if likely denied?**
+        - Creates formal record of medical necessity
+        - Initiates appeal rights and timeline
+        - Some payers approve requests that initially appear to not meet criteria
+        - Documents the barrier for patient and payer records
+        
+        **Appeal process typically includes:**
+        1. Peer-to-peer review (physician-to-physician call)
+        2. Written appeal with additional documentation
+        3. External review (if internal appeals exhausted)
+        
+        **If you choose this path:**
+        - Include all available documentation in initial submission
+        - Note in the letter that you are requesting exception review
+        - Be prepared for peer-to-peer call within 24-72 hours
+        """)
 
 # ============================================================================
 # NATIONAL FALLBACK SEARCH - Added Jan 2026
@@ -2647,17 +2851,59 @@ Step Therapy: REQUIRED ({step_req}, {step_dur})
                             # Update session state with any changes
                             st.session_state[session_key] = updated_trials
                     else:
-                        # No prior medications documented
+                        # No prior medications documented - show helpful guidance
                         st.markdown("""
                         <div style="background: #FEF3C7; border: 2px solid #F59E0B; border-radius: 12px; padding: 1.25rem; margin: 1rem 0;">
                             <div style="font-weight: 700; color: #92400E; font-size: 1rem; margin-bottom: 0.5rem;">
                                 ⚠️ No Prior Medications Documented
                             </div>
                             <div style="color: #78350F;">
-                                This payer requires step therapy. To generate a successful PA letter, document the patient's prior medication trials in the clinical note on the <strong>Paste Notes</strong> page.
+                                This payer requires step therapy documentation before approving this medication.
                             </div>
                         </div>
                         """, unsafe_allow_html=True)
+                        
+                        # Show next steps for no medications case
+                        with st.expander("📋 What are my options?", expanded=True):
+                            st.markdown("""
+                            **Option 1: Add medication history to clinical note**
+                            
+                            If the patient has tried preventive medications, go to the **Paste Notes** page 
+                            and include details like:
+                            
+                            ```
+                            Previously tried topiramate 100mg daily for 12 weeks - discontinued due to 
+                            cognitive side effects. Also failed propranolol 80mg BID for 8 weeks with 
+                            inadequate response.
+                            ```
+                            
+                            ---
+                            
+                            **Option 2: Request exception if contraindicated**
+                            
+                            If the patient cannot take the required step therapy medications due to:
+                            - Cardiovascular conditions (beta-blockers)
+                            - Pregnancy/childbearing potential (valproate, topiramate)  
+                            - Drug interactions
+                            - Prior serious adverse reaction
+                            
+                            You can submit a medical necessity exception request.
+                            
+                            ---
+                            
+                            **Option 3: Begin step therapy if appropriate**
+                            
+                            If clinically appropriate, start the patient on a required medication class. 
+                            Most policies require 8+ weeks at therapeutic dose.
+                            
+                            ---
+                            
+                            **Option 4: Refer to specialist**
+                            
+                            A headache specialist can help navigate complex cases and provide 
+                            supporting documentation for exceptions.
+                            """)
+                        
                         ready_for_pa = False
                 
                 # Single primary action button - Generate PA
