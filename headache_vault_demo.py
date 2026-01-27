@@ -1349,6 +1349,9 @@ Return ONLY the JSON object. Use null for ANY field where information is not exp
             # This catches AI hallucinations by checking if values actually appear in the note
             note_lower = note_text.lower()
             
+            # DEBUG: Track what we're checking
+            validation_log = []
+            
             # Validate STATE - must have state name, abbreviation, or city mentioned
             if parsed.get('state'):
                 state_code = parsed['state'].upper()
@@ -1374,6 +1377,7 @@ Return ONLY the JSON object. Use null for ANY field where information is not exp
                 indicators = state_indicators.get(state_code, [state_code.lower()])
                 state_found = any(ind in note_lower for ind in indicators)
                 if not state_found:
+                    validation_log.append(f"Removed hallucinated state: {parsed['state']}")
                     parsed['state'] = None  # Clear hallucinated state
             
             # Validate AGE - must have a number followed by age-related words
@@ -1386,7 +1390,11 @@ Return ONLY the JSON object. Use null for ANY field where information is not exp
                 ]
                 age_found = any(re.search(pattern, note_lower) for pattern in age_patterns)
                 if not age_found:
+                    validation_log.append(f"Removed hallucinated age: {parsed['age']}")
                     parsed['age'] = None  # Clear hallucinated age
+            
+            # Store validation log for display
+            parsed['_validation_log'] = validation_log
             
             return parsed
         except:
@@ -2209,6 +2217,11 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
                     # Success celebration
                     st.balloons()
                     st.success("🎉 **Note Parsed Successfully!** Extracted patient data in 2.3 seconds.")
+                    
+                    # DEBUG: Show validation log if any hallucinations were caught
+                    if parsed_data and parsed_data.get('_validation_log'):
+                        for msg in parsed_data['_validation_log']:
+                            st.warning(f"🔍 Validation: {msg}")
                     
                    # Show quality indicator
                     if collection_state and hasattr(collection_state, 'get_search_quality_score'):
