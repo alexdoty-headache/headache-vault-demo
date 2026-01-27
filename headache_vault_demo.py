@@ -2008,7 +2008,25 @@ Step Therapy: REQUIRED ({step_req}, {step_dur})
         search_clicked = st.sidebar.button("🔎 Search Policies", type="primary", use_container_width=True)
 
     # Main content area - show results from either search method
-    if (search_clicked or st.session_state.search_results is not None) or st.session_state.get('show_results', False):
+    # But DON'T show results if state hasn't been selected yet
+    if state_not_selected:
+        # Clear any cached results and show welcome message
+        st.session_state.search_results = None
+        st.markdown("""
+<div style="background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%); border: 2px solid #3B82F6; border-radius: 16px; padding: 2rem; margin: 2rem 0; text-align: center;">
+    <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
+    <div style="font-weight: 700; color: #1E40AF; font-size: 1.5rem; margin-bottom: 1rem;">
+        Select a State to Search Payer Policies
+    </div>
+    <div style="color: #1E3A8A; font-size: 1.1rem; margin-bottom: 1.5rem;">
+        Use the <strong>State</strong> dropdown in the sidebar to find policies specific to your patient's insurance.
+    </div>
+    <div style="color: #3B82F6; font-size: 0.95rem;">
+        💡 Our database covers <strong>866 policies</strong> across <strong>50 states</strong> for all major payers.
+    </div>
+</div>
+""", unsafe_allow_html=True)
+    elif (search_clicked or st.session_state.search_results is not None) or st.session_state.get('show_results', False):
         if search_clicked:
             # Create DataCollectionState for quality scoring
             collection_state = DataCollectionState(
@@ -2435,52 +2453,74 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
                 st.success("✅ Edits saved!")
                 st.rerun()
         
-        # Search button with celebration
-        if st.button("🔎 Search with Extracted Data", type="primary", use_container_width=True):
-            # Determine the drug class to search for
-            search_drug_class = parsed.get('drug_class')
-            
-            # Handle cluster headache drug class fallback
-            if search_drug_class and 'Cluster' in search_drug_class:
-                state_drugs = db_b[db_b['State'] == parsed.get('state')]['Drug_Class'].unique().tolist()
-                if search_drug_class not in state_drugs and 'CGRP mAbs' in state_drugs:
-                    search_drug_class = 'CGRP mAbs'  # Fall back to CGRP mAbs for cluster
-            
-            # Perform search with national fallback support
-            query, fallback_used, fallback_message = search_policies_with_fallback(
-                db_b,
-                state=parsed.get('state'),
-                payer=parsed.get('payer'),
-                drug_class=search_drug_class
-            )
-            
-            # Filter by diagnosis - but DON'T double-filter if drug_class already contains the diagnosis
-            if parsed.get('diagnosis') == "Cluster Headache":
-                # Only apply cluster filter if we actually have cluster-specific policies
-                if parsed.get('drug_class') and 'Cluster' not in parsed.get('drug_class', ''):
-                    cluster_filtered = query[query['Drug_Class'].str.contains('Cluster', case=False, na=False)]
-                    # Only use cluster filter if it returns results, otherwise keep CGRP mAbs
-                    if not cluster_filtered.empty:
-                        query = cluster_filtered
-            elif parsed.get('diagnosis') == "Chronic Migraine":
-                # Only filter if needed
-                if not query.empty:
-                    chronic_filtered = query[query['Medication_Category'].str.contains('Chronic|Preventive', case=False, na=False)]
-                    if not chronic_filtered.empty:
-                        query = chronic_filtered
-            # Don't filter episodic - too aggressive
-            
-            st.session_state.search_results = query
-            st.session_state.patient_age = parsed.get('age') if parsed.get('age') else None  # Don't default to 35
-            st.session_state.fallback_used = fallback_used
-            st.session_state.fallback_message = fallback_message
-            st.session_state.show_pa_text = False  # Reset PA display on new search
-            st.session_state.current_page = 'Search'
-            
-            if fallback_used:
-                st.toast(f"Using national baseline policy", icon="ℹ️")
-            st.toast("🎉 Policy search complete! Found {} matching policies.".format(len(query)), icon="🎉")
-            st.rerun()
+        # Search button - conditional based on whether state is available
+        state_available = parsed.get('state') is not None
+        
+        if state_available:
+            # State is available - show normal search button
+            if st.button("🔎 Search with Extracted Data", type="primary", use_container_width=True):
+                # Determine the drug class to search for
+                search_drug_class = parsed.get('drug_class')
+                
+                # Handle cluster headache drug class fallback
+                if search_drug_class and 'Cluster' in search_drug_class:
+                    state_drugs = db_b[db_b['State'] == parsed.get('state')]['Drug_Class'].unique().tolist()
+                    if search_drug_class not in state_drugs and 'CGRP mAbs' in state_drugs:
+                        search_drug_class = 'CGRP mAbs'  # Fall back to CGRP mAbs for cluster
+                
+                # Perform search with national fallback support
+                query, fallback_used, fallback_message = search_policies_with_fallback(
+                    db_b,
+                    state=parsed.get('state'),
+                    payer=parsed.get('payer'),
+                    drug_class=search_drug_class
+                )
+                
+                # Filter by diagnosis - but DON'T double-filter if drug_class already contains the diagnosis
+                if parsed.get('diagnosis') == "Cluster Headache":
+                    # Only apply cluster filter if we actually have cluster-specific policies
+                    if parsed.get('drug_class') and 'Cluster' not in parsed.get('drug_class', ''):
+                        cluster_filtered = query[query['Drug_Class'].str.contains('Cluster', case=False, na=False)]
+                        # Only use cluster filter if it returns results, otherwise keep CGRP mAbs
+                        if not cluster_filtered.empty:
+                            query = cluster_filtered
+                elif parsed.get('diagnosis') == "Chronic Migraine":
+                    # Only filter if needed
+                    if not query.empty:
+                        chronic_filtered = query[query['Medication_Category'].str.contains('Chronic|Preventive', case=False, na=False)]
+                        if not chronic_filtered.empty:
+                            query = chronic_filtered
+                # Don't filter episodic - too aggressive
+                
+                st.session_state.search_results = query
+                st.session_state.patient_age = parsed.get('age') if parsed.get('age') else None  # Don't default to 35
+                st.session_state.fallback_used = fallback_used
+                st.session_state.fallback_message = fallback_message
+                st.session_state.show_pa_text = False  # Reset PA display on new search
+                st.session_state.current_page = 'Search'
+                
+                if fallback_used:
+                    st.toast(f"Using national baseline policy", icon="ℹ️")
+                st.toast("🎉 Policy search complete! Found {} matching policies.".format(len(query)), icon="🎉")
+                st.rerun()
+        else:
+            # State not available - show guidance to user
+            st.markdown("""
+<div style="background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%); border: 2px solid #F59E0B; border-radius: 12px; padding: 1.25rem; margin: 1rem 0;">
+    <div style="font-weight: 700; color: #92400E; font-size: 1.1rem; margin-bottom: 0.5rem;">
+        📍 State Required for Policy Search
+    </div>
+    <div style="color: #78350F; margin-bottom: 1rem;">
+        To find your patient's specific payer policies, please add the state using one of these options:
+    </div>
+    <div style="color: #78350F; padding-left: 1rem;">
+        <strong>Option 1:</strong> Expand "✏️ Edit Extracted Data" above and select a state<br>
+        <strong>Option 2:</strong> Go to the <strong>Search</strong> page and select a state in the sidebar
+    </div>
+</div>
+""", unsafe_allow_html=True)
+            # Show disabled button as visual cue
+            st.button("🔎 Select State to Search Policies", type="primary", use_container_width=True, disabled=True)
 
 # ============================================================================
 # CLINICAL TOOLS SECTION (Only on Search page)
