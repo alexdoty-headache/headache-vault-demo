@@ -1348,18 +1348,11 @@ Return ONLY the JSON object. Use null for ANY field where information is not exp
             # POST-PROCESSING: Validate extracted values against original note
             # This catches AI hallucinations by checking if values actually appear in the note
             note_lower = note_text.lower()
-            
-            # DEBUG: Track what we're checking
             validation_log = []
-            validation_log.append(f"DEBUG: note_lower first 100 chars: {note_lower[:100]}")
-            validation_log.append(f"DEBUG: parsed keys: {list(parsed.keys())}")
-            validation_log.append(f"DEBUG: parsed.get('state')={parsed.get('state')}, type={type(parsed.get('state'))}")
-            validation_log.append(f"DEBUG: parsed.get('age')={parsed.get('age')}, type={type(parsed.get('age'))}")
             
             # Validate STATE - must have state name, abbreviation, or city mentioned
             if parsed.get('state'):
                 state_code = str(parsed['state']).upper()
-                validation_log.append(f"DEBUG: Checking state={state_code}")
                 # Map of state codes to names and major cities
                 state_indicators = {
                     'PA': ['pennsylvania', 'philadelphia', 'pittsburgh', 'harrisburg', ' pa ', ' pa.'],
@@ -1380,11 +1373,9 @@ Return ONLY the JSON object. Use null for ANY field where information is not exp
                 }
                 # Check if ANY indicator for this state appears in the note
                 indicators = state_indicators.get(state_code, [state_code.lower()])
-                validation_log.append(f"DEBUG: indicators={indicators}")
                 state_found = any(ind in note_lower for ind in indicators)
-                validation_log.append(f"DEBUG: state_found={state_found}")
                 if not state_found:
-                    validation_log.append(f"REMOVED hallucinated state: {parsed['state']}")
+                    validation_log.append(f"Cleared hallucinated state: {parsed['state']}")
                     parsed['state'] = None  # Clear hallucinated state
             
             # Validate AGE - must have a number followed by age-related words
@@ -1397,7 +1388,7 @@ Return ONLY the JSON object. Use null for ANY field where information is not exp
                 ]
                 age_found = any(re.search(pattern, note_lower) for pattern in age_patterns)
                 if not age_found:
-                    validation_log.append(f"Removed hallucinated age: {parsed['age']}")
+                    validation_log.append(f"Cleared hallucinated age: {parsed['age']}")
                     parsed['age'] = None  # Clear hallucinated age
             
             # Store validation log for display
@@ -1921,33 +1912,54 @@ Step Therapy: REQUIRED ({step_req}, {step_dur})
 </div>
 """, unsafe_allow_html=True)
 
-    # State selection
+    # State selection - add placeholder if state not detected
     states = sorted(db_b['State'].unique().tolist())
+    ctx = SessionStateManager.get_context()
+    
+    # If state not specified, show placeholder option
+    if ctx.state is None:
+        state_options = ["-- Please Select State --"] + states
+        state_index = 0  # Start on placeholder
+    else:
+        state_options = states
+        state_index = states.index(ctx.state) if ctx.state in states else 0
+    
     selected_state = st.sidebar.selectbox(
         "State",
-        options=states,
-        index=SidebarHelper.get_state_index(states),
+        options=state_options,
+        index=state_index,
         key="sidebar_state"
     )
-
-    # Payer selection
-    state_payers = db_b[db_b['State'] == selected_state]['Payer_Name'].unique().tolist()
-    payer_options = ['All Payers'] + sorted(state_payers)
+    
+    # Check if user still needs to select a state
+    state_not_selected = selected_state == "-- Please Select State --"
+    if state_not_selected:
+        st.sidebar.warning("⚠️ Please select a state to search policies")
+        # Use placeholder options when no state selected
+        payer_options = ['All Payers']
+        state_drug_classes = ['CGRP mAbs']  # Default option
+    else:
+        # Payer selection based on selected state
+        state_payers = db_b[db_b['State'] == selected_state]['Payer_Name'].unique().tolist()
+        payer_options = ['All Payers'] + sorted(state_payers)
+        # Drug class selection based on selected state
+        state_drug_classes = sorted(db_b[db_b['State'] == selected_state]['Drug_Class'].unique().tolist())
+    
     selected_payer = st.sidebar.selectbox(
         "Payer", 
         options=payer_options,
-        index=SidebarHelper.get_payer_index(payer_options),
-        key="sidebar_payer"
+        index=SidebarHelper.get_payer_index(payer_options) if not state_not_selected else 0,
+        key="sidebar_payer",
+        disabled=state_not_selected
     )
     
-    # Drug class selection
-    state_drug_classes = sorted(db_b[db_b['State'] == selected_state]['Drug_Class'].unique().tolist())
     selected_drug = st.sidebar.selectbox(
         "Medication Class",
-        options=state_drug_classes,
-        index=SidebarHelper.get_drug_index(state_drug_classes),
-        help=f"{len(state_drug_classes)} drug classes available in {selected_state}",
-        key="sidebar_drug"
+        options=state_drug_classes if state_drug_classes else ['CGRP mAbs'],
+        index=SidebarHelper.get_drug_index(state_drug_classes) if not state_not_selected and state_drug_classes else 0,
+        help=f"{len(state_drug_classes)} drug classes available" if not state_not_selected else "Select state first",
+        key="sidebar_drug",
+        disabled=state_not_selected
     )
     
     # Headache type
@@ -1959,14 +1971,15 @@ Step Therapy: REQUIRED ({step_req}, {step_dur})
         key="sidebar_headache"
     )
 
-    # Patient age (from PatientContext)
+    # Patient age (from PatientContext) - use 40 as neutral default if not specified
     ctx = SessionStateManager.get_context()
+    age_value = ctx.age if ctx.age is not None else 40
     patient_age = st.sidebar.number_input(
         "Patient Age (years)",
         min_value=1,
         max_value=120,
-        value=ctx.age,
-        help="Used to check pediatric prescribing restrictions",
+        value=age_value,
+        help="Used to check pediatric prescribing restrictions" + (" (not detected - please verify)" if ctx.age is None else ""),
         key="sidebar_age"
     )
     # Search button
@@ -1987,14 +2000,19 @@ Step Therapy: REQUIRED ({step_req}, {step_dur})
 </div>
 """, unsafe_allow_html=True)
 
-    search_clicked = st.sidebar.button("🔎 Search Policies", type="primary", use_container_width=True)
+    # Search button - disabled if state not selected
+    if state_not_selected:
+        st.sidebar.button("🔎 Search Policies", type="primary", use_container_width=True, disabled=True)
+        search_clicked = False
+    else:
+        search_clicked = st.sidebar.button("🔎 Search Policies", type="primary", use_container_width=True)
 
     # Main content area - show results from either search method
     if (search_clicked or st.session_state.search_results is not None) or st.session_state.get('show_results', False):
         if search_clicked:
             # Create DataCollectionState for quality scoring
             collection_state = DataCollectionState(
-                state=selected_state if selected_state != 'ALL' else None,
+                state=selected_state if selected_state not in ['ALL', '-- Please Select State --'] else None,
                 payer=selected_payer if selected_payer != 'All Payers' else None,
                 drug_class=selected_drug
             )
@@ -2251,15 +2269,8 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
                 parsed_data = parse_clinical_note(clinical_note, db_a, db_b)
                 
                 if parsed_data:
-                    # DEBUG: Show what parser returned BEFORE any modification
-                    st.warning(f"🔍 BEFORE SessionStateManager: state={parsed_data.get('state')}, age={parsed_data.get('age')}")
-                    
                     # Update unified patient context
                     SessionStateManager.set_from_ai_parse(parsed_data)
-                    
-                    # DEBUG: Show what it looks like AFTER modification
-                    st.warning(f"🔍 AFTER SessionStateManager: state={parsed_data.get('state')}, age={parsed_data.get('age')}")
-                    
                     st.session_state.parsed_data = parsed_data  # Keep for backward compatibility
                     
                      # Create and store DataCollectionState for quality tracking
@@ -2273,17 +2284,9 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
                     
                     # Success celebration
                     st.balloons()
-                    st.success("🎉 **Note Parsed Successfully!** [v9-DATAFLOW-FIX] Extracted patient data.")
+                    st.success("🎉 **Note Parsed Successfully!** Extracted patient data.")
                     
-                    # DEBUG: Show what we got from parser
-                    st.info(f"🔬 DEBUG: State={parsed_data.get('state')}, Age={parsed_data.get('age')}, Log={parsed_data.get('_validation_log')}")
-                    
-                    # DEBUG: Show validation log if any hallucinations were caught
-                    if parsed_data and parsed_data.get('_validation_log'):
-                        for msg in parsed_data['_validation_log']:
-                            st.warning(f"🔍 Validation: {msg}")
-                    
-                   # Show quality indicator
+                    # Show quality indicator
                     if collection_state and hasattr(collection_state, 'get_search_quality_score'):
                         score, desc = collection_state.get_search_quality_score()
                         st.markdown(get_quality_indicator_html(score, desc), unsafe_allow_html=True)

@@ -43,11 +43,11 @@ class PatientContext:
     via the SessionStateManager.
     
     Attributes:
-        state: Two-letter state code (e.g., 'PA', 'NY')
+        state: Two-letter state code (e.g., 'PA', 'NY') - None if not specified
         payer: Insurance company name (exact match to database)
         drug_class: Medication class being requested
         diagnosis: Primary diagnosis (Chronic Migraine, Episodic Migraine, Cluster Headache)
-        age: Patient age in years
+        age: Patient age in years - None if not specified
         headache_type: Same as diagnosis (for backward compatibility)
         prior_medications: List of previously tried medications
         confidence: AI parsing confidence level (high/medium/low)
@@ -56,12 +56,12 @@ class PatientContext:
         source: Origin of data ('ai_parsed', 'manual', 'edited')
     """
     
-    # Core clinical data
-    state: str = "PA"
+    # Core clinical data - None means "not specified", forcing user to select
+    state: Optional[str] = None
     payer: Optional[str] = None
     drug_class: Optional[str] = None
     diagnosis: str = "Chronic Migraine"
-    age: int = 35
+    age: Optional[int] = None
     headache_type: str = "Chronic Migraine"
     
     # Treatment history
@@ -141,7 +141,7 @@ class SessionStateManager:
         'clinical_note': '',
         # Legacy compatibility
         'parsed_data': {},
-        'patient_age': 35,
+        'patient_age': None,  # Don't default - let user specify
     }
     
     @classmethod
@@ -280,7 +280,7 @@ class SessionStateManager:
         """Reset patient context to defaults."""
         st.session_state.patient_context = PatientContext()
         st.session_state.parsed_data = None
-        st.session_state.patient_age = 35
+        st.session_state.patient_age = None  # Don't default to 35
     
     @classmethod
     def clear_search(cls) -> None:
@@ -405,9 +405,12 @@ class SidebarHelper:
     def get_state_index(states: List[str]) -> int:
         """Get the index for state dropdown based on patient context."""
         ctx = SessionStateManager.get_context()
-        if ctx.state in states:
+        # If state is specified and valid, use it
+        if ctx.state and ctx.state in states:
             return states.index(ctx.state)
-        return states.index('PA') if 'PA' in states else 0
+        # Otherwise default to first state alphabetically (usually 'AL' or 'ALL')
+        # Don't default to PA - let user explicitly select
+        return 0
     
     @staticmethod
     def get_payer_index(payer_options: List[str]) -> int:
