@@ -1229,12 +1229,22 @@ def parse_clinical_note(note_text, db_a, db_b):
                 "role": "user",
                 "content": f"""Extract patient information from this clinical note. Return ONLY a JSON object.
 
-CRITICAL RULE: Only extract information that is EXPLICITLY stated in the note.
-- If state/location is NOT mentioned → return null for state
-- If insurance/payer is NOT mentioned → return null for payer  
-- If age is NOT mentioned → return null for age
-- If specific medication is NOT mentioned → return null for drug_class
-- Do NOT guess, infer, or make up any information that is not written in the note
+**STRICT EXTRACTION RULES - READ CAREFULLY:**
+
+You MUST return null for any field where the information is not EXPLICITLY written in the note.
+DO NOT:
+- Guess a state (like "PA") if no state or city is mentioned
+- Guess an age (like "35") if no age is mentioned  
+- Guess a payer if no insurance is mentioned
+- Make up or infer ANY information
+
+EXAMPLES OF CORRECT BEHAVIOR:
+- Note says "45-year-old" → age: 45
+- Note does NOT mention age → age: null (NOT a guess like 35)
+- Note says "lives in Philadelphia" → state: "PA"
+- Note does NOT mention location → state: null (NOT a guess like "PA")
+- Note says "has Aetna" → payer: "Aetna"
+- Note does NOT mention insurance → payer: null
 
 CRITICAL: Look for insurance/payer information carefully. Examples:
 - "Has Independence Blue Cross" → payer: "Independence Blue Cross"
@@ -1245,9 +1255,14 @@ CRITICAL: Look for insurance/payer information carefully. Examples:
 
 JSON format:
 {{
-  "state": "two-letter state code (PA, NY, CA, etc) or null if NOT explicitly stated",
-  "payer": "EXACT insurance company name or null if NOT explicitly stated", 
-  "drug_class": "medication class from drug list or null if NOT explicitly stated",
+  "state": "two-letter state code or null if NO location mentioned",
+  "payer": "insurance company name or null if NO insurance mentioned", 
+  "drug_class": "medication class or null if NO specific drug requested",
+  "diagnosis": "Chronic Migraine, Episodic Migraine, or Cluster Headache based on symptoms",
+  "age": "integer or null if NO age mentioned",
+  "prior_medications": ["only medications EXPLICITLY named as tried/failed"],
+  "confidence": "high/medium/low based on how much info was explicitly stated"
+}}
   "diagnosis": "Chronic Migraine, Episodic Migraine, or Cluster Headache based on symptoms",
   "age": integer age or null if NOT explicitly stated,
   "prior_medications": ["medications that failed - only include if explicitly named"],
