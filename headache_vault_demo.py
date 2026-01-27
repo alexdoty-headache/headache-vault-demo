@@ -1229,44 +1229,21 @@ def parse_clinical_note(note_text, db_a, db_b):
                 "role": "user",
                 "content": f"""Extract patient information from this clinical note. Return ONLY a JSON object.
 
-**STRICT EXTRACTION RULES - READ CAREFULLY:**
-
-You MUST return null for any field where the information is not EXPLICITLY written in the note.
-DO NOT:
-- Guess a state (like "PA") if no state or city is mentioned
-- Guess an age (like "35") if no age is mentioned  
-- Guess a payer if no insurance is mentioned
-- Make up or infer ANY information
-
-EXAMPLES OF CORRECT BEHAVIOR:
-- Note says "45-year-old" → age: 45
-- Note does NOT mention age → age: null (NOT a guess like 35)
-- Note says "lives in Philadelphia" → state: "PA"
-- Note does NOT mention location → state: null (NOT a guess like "PA")
-- Note says "has Aetna" → payer: "Aetna"
-- Note does NOT mention insurance → payer: null
-
 CRITICAL: Look for insurance/payer information carefully. Examples:
 - "Has Independence Blue Cross" → payer: "Independence Blue Cross"
 - "Has Highmark insurance" → payer: "Highmark Blue Cross Blue Shield"
 - "Aetna commercial plan" → payer: "Aetna"
 - "UnitedHealthcare" → payer: "UnitedHealthcare"
-- NO INSURANCE MENTIONED → payer: null
 
 JSON format:
 {{
-  "state": "two-letter state code or null if NO location mentioned",
-  "payer": "insurance company name or null if NO insurance mentioned", 
-  "drug_class": "medication class or null if NO specific drug requested",
-  "diagnosis": "Chronic Migraine, Episodic Migraine, or Cluster Headache based on symptoms",
-  "age": "integer or null if NO age mentioned",
-  "prior_medications": ["only medications EXPLICITLY named as tried/failed"],
-  "confidence": "high/medium/low based on how much info was explicitly stated"
-}}
-  "diagnosis": "Chronic Migraine, Episodic Migraine, or Cluster Headache based on symptoms",
-  "age": integer age or null if NOT explicitly stated,
-  "prior_medications": ["medications that failed - only include if explicitly named"],
-  "confidence": "high if most fields found, medium if some missing, low if minimal info"
+  "state": "two-letter state code (PA, NY, CA, etc) or null",
+  "payer": "EXACT insurance company name or null - LOOK FOR THIS CAREFULLY", 
+  "drug_class": "medication class from drug list or null",
+  "diagnosis": "Chronic Migraine, Episodic Migraine, or Cluster Headache",
+  "age": integer age or null,
+  "prior_medications": ["medications that failed"],
+  "confidence": "high/medium/low"
 }}
 
 Common payers in database:
@@ -1310,7 +1287,7 @@ DRUG CLASS PRIORITY for unspecified preventive requests:
 Clinical note:
 {note_text}
 
-Return ONLY the JSON object. Use null for ANY field where information is not explicitly stated in the note. Do NOT fabricate or assume information."""
+Return ONLY the JSON object with all fields filled in. If you see ANY mention of insurance or payer, include it in the "payer" field."""
             }]
         )
         
@@ -1344,57 +1321,6 @@ Return ONLY the JSON object. Use null for ANY field where information is not exp
                 # Update with matched name
                 if exact_match:
                     parsed['payer'] = exact_match
-            
-            # POST-PROCESSING: Validate extracted values against original note
-            # This catches AI hallucinations by checking if values actually appear in the note
-            note_lower = note_text.lower()
-            
-            # DEBUG: Track what we're checking
-            validation_log = []
-            
-            # Validate STATE - must have state name, abbreviation, or city mentioned
-            if parsed.get('state'):
-                state_code = parsed['state'].upper()
-                # Map of state codes to names and major cities
-                state_indicators = {
-                    'PA': ['pennsylvania', 'philadelphia', 'pittsburgh', 'harrisburg', ' pa ', ' pa.'],
-                    'NY': ['new york', 'manhattan', 'brooklyn', 'buffalo', ' ny ', ' ny.'],
-                    'CA': ['california', 'los angeles', 'san francisco', 'san diego', ' ca ', ' ca.'],
-                    'TX': ['texas', 'houston', 'dallas', 'austin', 'san antonio', ' tx ', ' tx.'],
-                    'FL': ['florida', 'miami', 'orlando', 'tampa', 'jacksonville', ' fl ', ' fl.'],
-                    'IL': ['illinois', 'chicago', ' il ', ' il.'],
-                    'OH': ['ohio', 'cleveland', 'columbus', 'cincinnati', ' oh ', ' oh.'],
-                    'NJ': ['new jersey', 'newark', 'jersey city', ' nj ', ' nj.'],
-                    'MA': ['massachusetts', 'boston', ' ma ', ' ma.'],
-                    'GA': ['georgia', 'atlanta', ' ga ', ' ga.'],
-                    'NC': ['north carolina', 'charlotte', 'raleigh', ' nc ', ' nc.'],
-                    'MI': ['michigan', 'detroit', ' mi ', ' mi.'],
-                    'AZ': ['arizona', 'phoenix', 'tucson', ' az ', ' az.'],
-                    'WA': ['washington state', 'seattle', ' wa ', ' wa.'],
-                    'CO': ['colorado', 'denver', ' co ', ' co.'],
-                }
-                # Check if ANY indicator for this state appears in the note
-                indicators = state_indicators.get(state_code, [state_code.lower()])
-                state_found = any(ind in note_lower for ind in indicators)
-                if not state_found:
-                    validation_log.append(f"Removed hallucinated state: {parsed['state']}")
-                    parsed['state'] = None  # Clear hallucinated state
-            
-            # Validate AGE - must have a number followed by age-related words
-            if parsed.get('age'):
-                import re
-                age_patterns = [
-                    r'\b\d{1,3}\s*(?:year|yr|y/?o|years?\s*old)\b',
-                    r'\b(?:age|aged)\s*\d{1,3}\b',
-                    r'\b\d{1,3}\s*(?:yo|y\.o\.)\b',
-                ]
-                age_found = any(re.search(pattern, note_lower) for pattern in age_patterns)
-                if not age_found:
-                    validation_log.append(f"Removed hallucinated age: {parsed['age']}")
-                    parsed['age'] = None  # Clear hallucinated age
-            
-            # Store validation log for display
-            parsed['_validation_log'] = validation_log
             
             return parsed
         except:
@@ -2193,10 +2119,6 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
         if not clinical_note.strip():
             st.warning("Please enter a clinical note to parse.")
         else:
-            # Clear previous parsed data before new parse
-            st.session_state.parsed_data = None
-            st.session_state.data_collection_state = None
-            
             with st.spinner("🧠 Analyzing clinical note..."):
                 parsed_data = parse_clinical_note(clinical_note, db_a, db_b)
                 
@@ -2216,12 +2138,7 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
                     
                     # Success celebration
                     st.balloons()
-                    st.success("🎉 **Note Parsed Successfully!** [v3-DEBUG] Extracted patient data in 2.3 seconds.")
-                    
-                    # DEBUG: Show validation log if any hallucinations were caught
-                    if parsed_data and parsed_data.get('_validation_log'):
-                        for msg in parsed_data['_validation_log']:
-                            st.warning(f"🔍 Validation: {msg}")
+                    st.success("🎉 **Note Parsed Successfully!** Extracted patient data in 2.3 seconds.")
                     
                    # Show quality indicator
                     if collection_state and hasattr(collection_state, 'get_search_quality_score'):
