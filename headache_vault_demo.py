@@ -1351,10 +1351,12 @@ Return ONLY the JSON object. Use null for ANY field where information is not exp
             
             # DEBUG: Track what we're checking
             validation_log = []
+            validation_log.append(f"DEBUG: note_lower first 100 chars: {note_lower[:100]}")
             
             # Validate STATE - must have state name, abbreviation, or city mentioned
             if parsed.get('state'):
-                state_code = parsed['state'].upper()
+                state_code = str(parsed['state']).upper()
+                validation_log.append(f"DEBUG: Checking state={state_code}")
                 # Map of state codes to names and major cities
                 state_indicators = {
                     'PA': ['pennsylvania', 'philadelphia', 'pittsburgh', 'harrisburg', ' pa ', ' pa.'],
@@ -1375,9 +1377,11 @@ Return ONLY the JSON object. Use null for ANY field where information is not exp
                 }
                 # Check if ANY indicator for this state appears in the note
                 indicators = state_indicators.get(state_code, [state_code.lower()])
+                validation_log.append(f"DEBUG: indicators={indicators}")
                 state_found = any(ind in note_lower for ind in indicators)
+                validation_log.append(f"DEBUG: state_found={state_found}")
                 if not state_found:
-                    validation_log.append(f"Removed hallucinated state: {parsed['state']}")
+                    validation_log.append(f"REMOVED hallucinated state: {parsed['state']}")
                     parsed['state'] = None  # Clear hallucinated state
             
             # Validate AGE - must have a number followed by age-related words
@@ -2259,7 +2263,7 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
                     
                     # Success celebration
                     st.balloons()
-                    st.success("🎉 **Note Parsed Successfully!** [v5-FALLBACK-FIX] Extracted patient data in 2.3 seconds.")
+                    st.success("🎉 **Note Parsed Successfully!** [v6-VERBOSE-DEBUG] Extracted patient data.")
                     
                     # DEBUG: Show what we got from parser
                     st.info(f"🔬 DEBUG: State={parsed_data.get('state')}, Age={parsed_data.get('age')}, Log={parsed_data.get('_validation_log')}")
