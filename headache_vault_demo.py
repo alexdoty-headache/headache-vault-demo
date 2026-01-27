@@ -1352,6 +1352,9 @@ Return ONLY the JSON object. Use null for ANY field where information is not exp
             # DEBUG: Track what we're checking
             validation_log = []
             validation_log.append(f"DEBUG: note_lower first 100 chars: {note_lower[:100]}")
+            validation_log.append(f"DEBUG: parsed keys: {list(parsed.keys())}")
+            validation_log.append(f"DEBUG: parsed.get('state')={parsed.get('state')}, type={type(parsed.get('state'))}")
+            validation_log.append(f"DEBUG: parsed.get('age')={parsed.get('age')}, type={type(parsed.get('age'))}")
             
             # Validate STATE - must have state name, abbreviation, or city mentioned
             if parsed.get('state'):
@@ -2263,7 +2266,7 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
                     
                     # Success celebration
                     st.balloons()
-                    st.success("🎉 **Note Parsed Successfully!** [v6-VERBOSE-DEBUG] Extracted patient data.")
+                    st.success("🎉 **Note Parsed Successfully!** [v7-KEYS-DEBUG] Extracted patient data.")
                     
                     # DEBUG: Show what we got from parser
                     st.info(f"🔬 DEBUG: State={parsed_data.get('state')}, Age={parsed_data.get('age')}, Log={parsed_data.get('_validation_log')}")
