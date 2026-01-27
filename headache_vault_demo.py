@@ -2251,8 +2251,15 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
                 parsed_data = parse_clinical_note(clinical_note, db_a, db_b)
                 
                 if parsed_data:
+                    # DEBUG: Show what parser returned BEFORE any modification
+                    st.warning(f"🔍 BEFORE SessionStateManager: state={parsed_data.get('state')}, age={parsed_data.get('age')}")
+                    
                     # Update unified patient context
                     SessionStateManager.set_from_ai_parse(parsed_data)
+                    
+                    # DEBUG: Show what it looks like AFTER modification
+                    st.warning(f"🔍 AFTER SessionStateManager: state={parsed_data.get('state')}, age={parsed_data.get('age')}")
+                    
                     st.session_state.parsed_data = parsed_data  # Keep for backward compatibility
                     
                      # Create and store DataCollectionState for quality tracking
@@ -2266,7 +2273,7 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
                     
                     # Success celebration
                     st.balloons()
-                    st.success("🎉 **Note Parsed Successfully!** [v7-KEYS-DEBUG] Extracted patient data.")
+                    st.success("🎉 **Note Parsed Successfully!** [v8-NO-DEFAULTS] Extracted patient data.")
                     
                     # DEBUG: Show what we got from parser
                     st.info(f"🔬 DEBUG: State={parsed_data.get('state')}, Age={parsed_data.get('age')}, Log={parsed_data.get('_validation_log')}")
@@ -2355,8 +2362,16 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
         with st.expander("✏️ Edit Extracted Data", expanded=False):
             st.markdown("Review and modify the extracted information before searching:")
             
-            edited_state = st.selectbox("State", options=sorted(db_b['State'].unique().tolist()), 
-                                       index=sorted(db_b['State'].unique().tolist()).index(parsed.get('state', 'PA')) if parsed.get('state') in db_b['State'].unique() else 0)
+            # Handle state - if AI returned None, show warning and default to first state
+            state_options = sorted(db_b['State'].unique().tolist())
+            if parsed.get('state') and parsed.get('state') in state_options:
+                state_index = state_options.index(parsed['state'])
+            else:
+                state_index = 0  # Default to first alphabetically (AL or ALL)
+                if not parsed.get('state'):
+                    st.warning("⚠️ **State not detected in note** - Please select the correct state")
+            
+            edited_state = st.selectbox("State", options=state_options, index=state_index)
             
             # Filter payers by edited state
             state_payers = sorted(db_b[db_b['State'] == edited_state]['Payer_Name'].unique().tolist())
@@ -2396,7 +2411,14 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
             
             edited_diagnosis = st.selectbox("Diagnosis", options=diagnosis_options, index=diag_index)
             
-            edited_age = st.number_input("Age", min_value=1, max_value=120, value=parsed.get('age', 35))
+            # Handle age - if AI returned None, show warning
+            if parsed.get('age'):
+                age_value = parsed['age']
+            else:
+                age_value = 40  # Neutral default
+                st.warning("⚠️ **Age not detected in note** - Please enter patient age")
+            
+            edited_age = st.number_input("Age", min_value=1, max_value=120, value=age_value)
             
             # Save edits
             if st.button("💾 Save Edits"):
@@ -2446,7 +2468,7 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
             # Don't filter episodic - too aggressive
             
             st.session_state.search_results = query
-            st.session_state.patient_age = parsed.get('age', 35)
+            st.session_state.patient_age = parsed.get('age') if parsed.get('age') else None  # Don't default to 35
             st.session_state.fallback_used = fallback_used
             st.session_state.fallback_message = fallback_message
             st.session_state.show_pa_text = False  # Reset PA display on new search
