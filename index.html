@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Headache Vault | PA Automation for Migraine Care</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Source+Sans+3:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --purple-deep: #2D1B4E;
+            --purple-primary: #5B3E8C;
+            --purple-mid: #7E5BAE;
+            --purple-light: #A88BD4;
+            --purple-pale: #E8DFF5;
+            --white: #FFFFFF;
+            --gray-100: #F8F7FA;
+            --gray-600: #6B6B7B;
+            --font-heading: 'Montserrat', sans-serif;
+            --font-body: 'Source Sans 3', sans-serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: var(--font-body);
+            background: var(--white);
+            color: var(--purple-deep);
+            line-height: 1.6;
+        }
+
+        header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 1rem 4rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--purple-pale);
+            z-index: 100;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--purple-primary), var(--purple-mid));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.25rem;
+        }
+
+        .logo-text {
+            font-family: var(--font-heading);
+            font-weight: 700;
+            font-size: 1.25rem;
+            color: var(--purple-deep);
+        }
+
+        nav {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        nav a {
+            color: var(--gray-600);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        nav a:hover { color: var(--purple-primary); }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--purple-primary), var(--purple-mid));
+            color: white;
+            box-shadow: 0 4px 15px rgba(91, 62, 140, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(91, 62, 140, 0.4);
+        }
+
+        .btn-secondary {
+            background: var(--purple-pale);
+            color: var(--purple-primary);
+        }
+
+        .btn-secondary:hover {
+            background: var(--purple-light);
+            color: white;
+        }
+
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            padding: 8rem 4rem 4rem;
+            background: linear-gradient(180deg, var(--gray-100) 0%, var(--white) 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 80%;
+            height: 150%;
+            background: radial-gradient(ellipse, rgba(91, 62, 140, 0.08) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .hero-content {
+            max-width: 650px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: var(--purple-pale);
+            border-radius: 50px;
+            font-size: 0.85rem;
+            color: var(--purple-primary);
+            font-weight: 500;
+            margin-bottom: 1.5rem;
+        }
+
+        .hero h1 {
+            font-family: var(--font-heading);
+            font-size: clamp(2.5rem, 5vw, 3.5rem);
+            font-weight: 800;
+            line-height: 1.15;
+            margin-bottom: 1.5rem;
+            color: var(--purple-deep);
+        }
+
+        .hero h1 span {
+            background: linear-gradient(135deg, var(--purple-primary), var(--purple-mid));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero p {
+            font-size: 1.2rem;
+            color: var(--gray-600);
+            margin-bottom: 2rem;
+            line-height: 1.7;
+        }
+
+        .hero-cta {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .btn-large {
+            padding: 1rem 2rem;
+            font-size: 1.05rem;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+            padding: 4rem;
+            background: var(--purple-deep);
+            color: white;
+        }
+
+        .stat { text-align: center; }
+
+        .stat-value {
+            font-family: var(--font-heading);
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--purple-light);
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin-top: 0.5rem;
+        }
+
+        .map-section {
+            padding: 5rem 4rem;
+            background: var(--gray-100);
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .section-header h2 {
+            font-family: var(--font-heading);
+            font-size: 2.25rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .section-header p {
+            color: var(--gray-600);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .map-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(45, 27, 78, 0.15);
+            border: 1px solid var(--purple-pale);
+        }
+
+        .map-container iframe {
+            width: 100%;
+            height: 600px;
+            border: none;
+            display: block;
+        }
+
+        .map-caption {
+            text-align: center;
+            margin-top: 1.5rem;
+            color: var(--gray-600);
+            font-size: 0.95rem;
+        }
+
+        .features {
+            padding: 5rem 4rem;
+            background: white;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .feature-card {
+            background: var(--gray-100);
+            border-radius: 16px;
+            padding: 2rem;
+            transition: all 0.3s ease;
+            border: 1px solid transparent;
+        }
+
+        .feature-card:hover {
+            border-color: var(--purple-light);
+            transform: translateY(-4px);
+            box-shadow: 0 10px 30px rgba(91, 62, 140, 0.1);
+        }
+
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--purple-primary), var(--purple-mid));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+        }
+
+        .feature-card h3 {
+            font-family: var(--font-heading);
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .feature-card p {
+            color: var(--gray-600);
+            font-size: 0.95rem;
+        }
+
+        /* Pricing Section */
+        .pricing {
+            padding: 5rem 4rem;
+            background: var(--gray-100);
+        }
+
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .pricing-card {
+            background: white;
+            border-radius: 20px;
+            padding: 2.5rem;
+            border: 1px solid var(--purple-pale);
+            transition: all 0.3s ease;
+        }
+
+        .pricing-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 15px 40px rgba(91, 62, 140, 0.12);
+        }
+
+        .pricing-card.featured {
+            border: 2px solid var(--purple-primary);
+            position: relative;
+        }
+
+        .pricing-badge {
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, var(--purple-primary), var(--purple-mid));
+            color: white;
+            padding: 0.35rem 1rem;
+            border-radius: 50px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .pricing-card h3 {
+            font-family: var(--font-heading);
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .pricing-card .price {
+            font-family: var(--font-heading);
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--purple-primary);
+            margin: 1rem 0;
+        }
+
+        .pricing-card .price span {
+            font-size: 1rem;
+            font-weight: 500;
+            color: var(--gray-600);
+        }
+
+        .pricing-card .description {
+            color: var(--gray-600);
+            font-size: 0.95rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--purple-pale);
+        }
+
+        .pricing-card ul {
+            list-style: none;
+            margin-bottom: 2rem;
+        }
+
+        .pricing-card ul li {
+            padding: 0.5rem 0;
+            color: var(--gray-600);
+            font-size: 0.95rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+
+        .pricing-card ul li::before {
+            content: '✓';
+            color: var(--purple-primary);
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .pricing-card .btn {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .demo-cta {
+            padding: 5rem 4rem;
+            background: linear-gradient(135deg, var(--purple-deep) 0%, var(--purple-primary) 100%);
+            text-align: center;
+            color: white;
+        }
+
+        .demo-cta h2 {
+            font-family: var(--font-heading);
+            font-size: 2.25rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .demo-cta p {
+            opacity: 0.9;
+            margin-bottom: 2rem;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .btn-white {
+            background: white;
+            color: var(--purple-primary);
+            font-weight: 700;
+        }
+
+        .btn-white:hover {
+            background: var(--purple-pale);
+            transform: translateY(-2px);
+        }
+
+        .demo-note {
+            margin-top: 1rem;
+            font-size: 0.85rem;
+            opacity: 0.7;
+        }
+
+        footer {
+            padding: 3rem 4rem;
+            background: var(--white);
+            text-align: center;
+            border-top: 1px solid var(--purple-pale);
+        }
+
+        .footer-tagline {
+            font-style: italic;
+            color: var(--gray-600);
+            max-width: 600px;
+            margin: 0 auto 1.5rem;
+            line-height: 1.6;
+        }
+
+        .footer-copy {
+            font-size: 0.85rem;
+            color: var(--gray-600);
+        }
+
+        @media (max-width: 768px) {
+            header { padding: 1rem 1.5rem; }
+            nav a:not(.btn) { display: none; }
+            .hero { padding: 7rem 1.5rem 3rem; }
+            .stats { grid-template-columns: 1fr; padding: 2rem 1.5rem; }
+            .features, .demo-cta, .map-section, .pricing { padding: 3rem 1.5rem; }
+            .map-container iframe { height: 400px; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <a href="#" class="logo">
+            <div class="logo-icon">🧠</div>
+            <span class="logo-text">The Headache Vault</span>
+        </a>
+        <nav>
+            <a href="#map">The Crisis</a>
+            <a href="#features">Features</a>
+            <a href="#pricing">Pricing</a>
+            <a href="#demo" class="btn btn-primary">Try Beta →</a>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-content">
+                <div class="hero-badge">🚀 Built by a migraine patient, for providers</div>
+                <h1>Complete CGRP <span>prior authorizations</span> in under 15 minutes</h1>
+                <p>A patient's ZIP code should not determine their time to treatment. The Headache Vault equips practitioners with data-driven tools to bypass administrative barriers.</p>
+                <div class="hero-cta">
+                    <a href="https://headache-vault-demo.streamlit.app/" class="btn btn-primary btn-large" target="_blank">
+                        🚀 Launch PA Engine Beta
+                    </a>
+                    <a href="#features" class="btn btn-secondary btn-large">Learn More</a>
+                </div>
+            </div>
+        </section>
+
+        <section class="stats">
+            <div class="stat">
+                <div class="stat-value">39M</div>
+                <div class="stat-label">Americans living with migraine</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">15.3M</div>
+                <div class="stat-label">Undiagnosed migraine patients</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">45K+</div>
+                <div class="stat-label">Additional patients we can reach annually</div>
+            </div>
+        </section>
+
+        <section class="map-section" id="map">
+            <div class="section-header">
+                <h2>The Diagnosis Gap</h2>
+                <p>15.3 million Americans with migraine remain undiagnosed. Geographic disparities in care access leave entire communities without treatment.</p>
+            </div>
+            <div class="map-container">
+                <iframe src="https://online.caliper.com/mas-795-ljp-686-hnx/maps/ml10nkl8009r3zaq8jgq" title="Undiagnosed Migraine Patients by ZIP Code"></iframe>
+            </div>
+            <p class="map-caption">Interactive map: Undiagnosed migraine patients by ZIP code</p>
+        </section>
+
+        <section class="features" id="features">
+            <div class="section-header">
+                <h2>PA Automation That Works</h2>
+                <p>Everything you need to prescribe CGRPs confidently and navigate prior authorizations efficiently.</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">📋</div>
+                    <h3>PA Template Generator</h3>
+                    <p>Auto-generate payer-specific PA forms with clinical justification, step therapy documentation, and evidence citations. Export to PDF in seconds.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔍</div>
+                    <h3>Payer Policy Database</h3>
+                    <p>Comprehensive payer policies across all 50 states. Know exactly what each insurer requires for CGRP mAbs, gepants, and Botox.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🤖</div>
+                    <h3>Clinical Note Parser</h3>
+                    <p>AI extracts headache frequency, failed medications, and diagnosis codes from your clinical notes automatically.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⚖️</div>
+                    <h3>State Law Integration</h3>
+                    <p>Gold Card eligibility tracking and statutory language for step therapy exceptions built into every PA.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="pricing" id="pricing">
+            <div class="section-header">
+                <h2>Pricing at Launch</h2>
+                <p>Currently in beta. These tiers will be available when we launch in 2026.</p>
+            </div>
+            <div class="pricing-grid">
+                <div class="pricing-card">
+                    <h3>Vault Access</h3>
+                    <div class="price">Free</div>
+                    <p class="description">For PCPs getting started with CGRP prescribing</p>
+                    <ul>
+                        <li>PA template generator (PDF export)</li>
+                        <li>Payer policy search</li>
+                        <li>Clinical note parser (basic)</li>
+                        <li>ICD-10 code lookup</li>
+                        <li>State-specific legal language</li>
+                        <li>Evidence citations</li>
+                    </ul>
+                    <a href="#demo" class="btn btn-secondary">Try Beta Demo</a>
+                </div>
+                <div class="pricing-card featured">
+                    <div class="pricing-badge">Coming at Launch</div>
+                    <h3>Vault Specialist</h3>
+                    <div class="price">$99<span>/month</span></div>
+                    <p class="description">For neurologists and headache-focused clinicians</p>
+                    <ul>
+                        <li>Everything in Vault Access</li>
+                        <li>AI-powered clinical note parsing</li>
+                        <li>PA tracking dashboard</li>
+                        <li>Approval rate analytics by payer</li>
+                        <li>Patient outcome tracking</li>
+                        <li>Priority support</li>
+                    </ul>
+                    <a href="#demo" class="btn btn-primary">Try Beta Demo</a>
+                </div>
+            </div>
+        </section>
+
+        <section class="demo-cta" id="demo">
+            <h2>Try the PA Engine Beta</h2>
+            <p>Upload a clinical note, select a payer and medication, and generate a complete prior authorization in minutes.</p>
+            <a href="https://headache-vault-demo.streamlit.app/" class="btn btn-white btn-large" target="_blank">
+                🚀 Launch PA Engine Beta
+            </a>
+            <p class="demo-note">No signup required • Works with sample patients • Beta version</p>
+        </section>
+    </main>
+
+    <footer>
+        <p class="footer-tagline">"The Headache Vault equips practitioners with data-driven tools to bypass administrative barriers because a headache disorder patient's ZIP code should not determine their time to treatment."</p>
+        <p class="footer-copy">© 2026 The Headache Vault. Built with ❤️ by a migraine patient.</p>
+    </footer>
+</body>
+</html>
