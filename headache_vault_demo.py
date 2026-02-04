@@ -2592,7 +2592,15 @@ def check_criteria_met(step_requirements, prior_medications, diagnosis):
     """
     criteria_status = []
     step_req_lower = step_requirements.lower() if step_requirements else ''
-    prior_meds_lower = [m.lower() for m in prior_medications] if prior_medications else []
+    
+    # Handle both old format (list of strings) and new format (list of dicts)
+    prior_meds_lower = []
+    if prior_medications:
+        for m in prior_medications:
+            if isinstance(m, str):
+                prior_meds_lower.append(m.lower())
+            elif isinstance(m, dict) and m.get('name'):
+                prior_meds_lower.append(m['name'].lower())
     
     # Common preventive medication classes
     beta_blockers = ['propranolol', 'metoprolol', 'atenolol', 'nadolol', 'timolol']
@@ -3453,7 +3461,23 @@ Required Duration: {step_dur}
 ──────────────────────────────────
 """
                         for i, med in enumerate(prior_meds, 1):
-                            pa_text += f"  {i}. {med}\n"
+                            # Handle both string and dict formats
+                            if isinstance(med, str):
+                                med_line = med
+                            elif isinstance(med, dict):
+                                med_line = med.get('name', 'Unknown')
+                                details = []
+                                if med.get('dose'):
+                                    details.append(med['dose'])
+                                if med.get('duration_weeks'):
+                                    details.append(f"{med['duration_weeks']} weeks")
+                                if med.get('reason_stopped'):
+                                    details.append(f"D/C: {med['reason_stopped']}")
+                                if details:
+                                    med_line += f" - {', '.join(details)}"
+                            else:
+                                med_line = str(med)
+                            pa_text += f"  {i}. {med_line}\n"
                         pa_text += """
   ✓ Patient has completed required step therapy trials as documented above.
 
@@ -3507,7 +3531,20 @@ Step Therapy: REQUIRED ({step_req}, {step_dur})
                     if prior_meds:
                         pa_text += "Prior Trials:\n"
                         for med in prior_meds:
-                            pa_text += f"  • {med}\n"
+                            # Handle both string and dict formats
+                            if isinstance(med, str):
+                                med_line = med
+                            elif isinstance(med, dict):
+                                med_line = med.get('name', 'Unknown')
+                                if med.get('dose'):
+                                    med_line += f" {med['dose']}"
+                                if med.get('duration_weeks'):
+                                    med_line += f" x{med['duration_weeks']}wk"
+                                if med.get('reason_stopped'):
+                                    med_line += f" → {med['reason_stopped']}"
+                            else:
+                                med_line = str(med)
+                            pa_text += f"  • {med_line}\n"
                     pa_text += "Status: Step therapy completed\n"
                 else:
                     pa_text += "\nStep Therapy: Not required\n"
