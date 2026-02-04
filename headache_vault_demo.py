@@ -331,6 +331,432 @@ def show_error(error_type: str, **context):
 
 
 # ============================================================================
+# MEDICATION NAME MATCHER - Handles brand names, generics, misspellings
+# ============================================================================
+
+class MedicationMatcher:
+    """
+    Robust medication name matching with fuzzy logic
+    Handles: brand names, generics, misspellings, common variations
+    """
+    
+    def __init__(self):
+        from difflib import SequenceMatcher
+        self.SequenceMatcher = SequenceMatcher
+        
+        # Comprehensive medication alias database
+        self.medication_db = {
+            # CGRP Monoclonal Antibodies
+            "aimovig": {
+                "generic": "erenumab",
+                "brand": "Aimovig",
+                "drug_class": "CGRP mAbs",
+                "aliases": ["erenumab", "aimovig", "erenumab-aooe"],
+                "common_misspellings": ["aimovag", "aimovig", "erenomab", "erenumob"]
+            },
+            "emgality": {
+                "generic": "galcanezumab",
+                "brand": "Emgality",
+                "drug_class": "CGRP mAbs",
+                "aliases": ["galcanezumab", "emgality", "galcanezumab-gnlm"],
+                "common_misspellings": ["emgalaty", "galcanezumob", "galcanezemab"]
+            },
+            "ajovy": {
+                "generic": "fremanezumab",
+                "brand": "Ajovy",
+                "drug_class": "CGRP mAbs",
+                "aliases": ["fremanezumab", "ajovy", "fremanezumab-vfrm"],
+                "common_misspellings": ["ajovey", "fremanezemab", "fremanezumob"]
+            },
+            "vyepti": {
+                "generic": "eptinezumab",
+                "brand": "Vyepti",
+                "drug_class": "CGRP mAbs",
+                "aliases": ["eptinezumab", "vyepti", "eptinezumab-jjmr"],
+                "common_misspellings": ["viepti", "eptinezemab", "eptinezumob"]
+            },
+            
+            # Gepants (Acute)
+            "nurtec": {
+                "generic": "rimegepant",
+                "brand": "Nurtec ODT",
+                "drug_class": "Gepants",
+                "aliases": ["rimegepant", "nurtec", "nurtec odt", "nurtec-odt"],
+                "common_misspellings": ["nurtac", "rimegapent", "rimegepent"]
+            },
+            "ubrelvy": {
+                "generic": "ubrogepant",
+                "brand": "Ubrelvy",
+                "drug_class": "Gepants",
+                "aliases": ["ubrogepant", "ubrelvy"],
+                "common_misspellings": ["ubrelvey", "ubrogapent", "ubrogepent"]
+            },
+            
+            # Gepants (Preventive)
+            "qulipta": {
+                "generic": "atogepant",
+                "brand": "Qulipta",
+                "drug_class": "Gepants (Preventive)",
+                "aliases": ["atogepant", "qulipta"],
+                "common_misspellings": ["qualipta", "atogapent", "atogepent"]
+            },
+            
+            # Ditans
+            "reyvow": {
+                "generic": "lasmiditan",
+                "brand": "Reyvow",
+                "drug_class": "Ditans",
+                "aliases": ["lasmiditan", "reyvow"],
+                "common_misspellings": ["rayvow", "lasmidatan", "lasmiditant"]
+            },
+            
+            # Botox
+            "botox": {
+                "generic": "onabotulinumtoxinA",
+                "brand": "Botox",
+                "drug_class": "Botox",
+                "aliases": ["onabotulinumtoxina", "botox", "onabotulinum", "onabotulinumtoxin a"],
+                "common_misspellings": ["botulinum", "onabotulinum"]
+            },
+            
+            # Triptans
+            "sumatriptan": {
+                "generic": "sumatriptan",
+                "brand": "Imitrex",
+                "drug_class": "Triptan",
+                "aliases": ["sumatriptan", "imitrex", "sumavel", "zecuity"],
+                "common_misspellings": ["sumatripptan", "sumatriptin", "imitrix"]
+            },
+            "rizatriptan": {
+                "generic": "rizatriptan",
+                "brand": "Maxalt",
+                "drug_class": "Triptan",
+                "aliases": ["rizatriptan", "maxalt", "maxalt-mlt"],
+                "common_misspellings": ["rizatripptan", "rizatriptin"]
+            },
+            "zolmitriptan": {
+                "generic": "zolmitriptan",
+                "brand": "Zomig",
+                "drug_class": "Triptan",
+                "aliases": ["zolmitriptan", "zomig", "zomig-zmt"],
+                "common_misspellings": ["zolmitripptan", "zolmitriptin"]
+            },
+            "eletriptan": {
+                "generic": "eletriptan",
+                "brand": "Relpax",
+                "drug_class": "Triptan",
+                "aliases": ["eletriptan", "relpax"],
+                "common_misspellings": ["eletripptan", "eletriptin"]
+            },
+            "naratriptan": {
+                "generic": "naratriptan",
+                "brand": "Amerge",
+                "drug_class": "Triptan",
+                "aliases": ["naratriptan", "amerge"],
+                "common_misspellings": ["naratripptan", "naratriptin"]
+            },
+            "almotriptan": {
+                "generic": "almotriptan",
+                "brand": "Axert",
+                "drug_class": "Triptan",
+                "aliases": ["almotriptan", "axert"],
+                "common_misspellings": ["almotripptan", "almotriptin"]
+            },
+            "frovatriptan": {
+                "generic": "frovatriptan",
+                "brand": "Frova",
+                "drug_class": "Triptan",
+                "aliases": ["frovatriptan", "frova"],
+                "common_misspellings": ["frovatripptan", "frovatriptin"]
+            },
+            
+            # Oral Preventives - Beta Blockers
+            "propranolol": {
+                "generic": "propranolol",
+                "brand": "Inderal",
+                "drug_class": "Beta-blocker",
+                "aliases": ["propranolol", "inderal", "inderal la", "innopran xl"],
+                "common_misspellings": ["propanolol", "propranolal", "propanalol", "indral"]
+            },
+            "metoprolol": {
+                "generic": "metoprolol",
+                "brand": "Toprol-XL",
+                "drug_class": "Beta-blocker",
+                "aliases": ["metoprolol", "toprol", "toprol-xl", "lopressor"],
+                "common_misspellings": ["metropolol", "metaprolol", "topral"]
+            },
+            "timolol": {
+                "generic": "timolol",
+                "brand": "Blocadren",
+                "drug_class": "Beta-blocker",
+                "aliases": ["timolol", "blocadren"],
+                "common_misspellings": ["timelol", "timolal"]
+            },
+            "atenolol": {
+                "generic": "atenolol",
+                "brand": "Tenormin",
+                "drug_class": "Beta-blocker",
+                "aliases": ["atenolol", "tenormin"],
+                "common_misspellings": ["atenalol", "atenolal"]
+            },
+            "nadolol": {
+                "generic": "nadolol",
+                "brand": "Corgard",
+                "drug_class": "Beta-blocker",
+                "aliases": ["nadolol", "corgard"],
+                "common_misspellings": ["nadolal", "corgaard"]
+            },
+            
+            # Anticonvulsants
+            "topiramate": {
+                "generic": "topiramate",
+                "brand": "Topamax",
+                "drug_class": "Anticonvulsant",
+                "aliases": ["topiramate", "topamax", "trokendi xr", "qudexy xr"],
+                "common_misspellings": ["topimax", "topomax", "topiramat", "topirimate"]
+            },
+            "valproate": {
+                "generic": "valproate",
+                "brand": "Depakote",
+                "drug_class": "Anticonvulsant",
+                "aliases": ["valproate", "valproic acid", "divalproex", "depakote", "depakene"],
+                "common_misspellings": ["valproat", "divalproax", "depakot"]
+            },
+            "gabapentin": {
+                "generic": "gabapentin",
+                "brand": "Neurontin",
+                "drug_class": "Anticonvulsant",
+                "aliases": ["gabapentin", "neurontin", "gralise"],
+                "common_misspellings": ["gabapantin", "neuronten"]
+            },
+            "zonisamide": {
+                "generic": "zonisamide",
+                "brand": "Zonegran",
+                "drug_class": "Anticonvulsant",
+                "aliases": ["zonisamide", "zonegran"],
+                "common_misspellings": ["zonisamid", "zonegram"]
+            },
+            
+            # Antidepressants - TCAs
+            "amitriptyline": {
+                "generic": "amitriptyline",
+                "brand": "Elavil",
+                "drug_class": "TCA",
+                "aliases": ["amitriptyline", "elavil"],
+                "common_misspellings": ["amitryptiline", "amitriptiline", "amitriptylene", "elavill"]
+            },
+            "nortriptyline": {
+                "generic": "nortriptyline",
+                "brand": "Pamelor",
+                "drug_class": "TCA",
+                "aliases": ["nortriptyline", "pamelor"],
+                "common_misspellings": ["nortryptiline", "nortriptiline", "pamalore"]
+            },
+            
+            # Antidepressants - SNRIs
+            "venlafaxine": {
+                "generic": "venlafaxine",
+                "brand": "Effexor",
+                "drug_class": "SNRI",
+                "aliases": ["venlafaxine", "effexor", "effexor xr"],
+                "common_misspellings": ["venlafaxene", "venlafaxin", "effexer"]
+            },
+            "duloxetine": {
+                "generic": "duloxetine",
+                "brand": "Cymbalta",
+                "drug_class": "SNRI",
+                "aliases": ["duloxetine", "cymbalta"],
+                "common_misspellings": ["duloxatine", "duloxetin", "cymbalta"]
+            },
+            
+            # Calcium Channel Blockers
+            "verapamil": {
+                "generic": "verapamil",
+                "brand": "Calan",
+                "drug_class": "CCB",
+                "aliases": ["verapamil", "calan", "verelan", "isoptin"],
+                "common_misspellings": ["verapamyl", "verapamol", "calin"]
+            },
+            "flunarizine": {
+                "generic": "flunarizine",
+                "brand": "Sibelium",
+                "drug_class": "CCB",
+                "aliases": ["flunarizine", "sibelium"],
+                "common_misspellings": ["flunarizin", "flunarazine"]
+            },
+            
+            # Other
+            "lithium": {
+                "generic": "lithium",
+                "brand": "Lithobid",
+                "drug_class": "Mood Stabilizer",
+                "aliases": ["lithium", "lithobid", "lithium carbonate"],
+                "common_misspellings": ["litheum", "lithiam"]
+            },
+            "candesartan": {
+                "generic": "candesartan",
+                "brand": "Atacand",
+                "drug_class": "ARB",
+                "aliases": ["candesartan", "atacand"],
+                "common_misspellings": ["candesarten", "candesartin", "atacond"]
+            },
+            "lisinopril": {
+                "generic": "lisinopril",
+                "brand": "Zestril",
+                "drug_class": "ACE Inhibitor",
+                "aliases": ["lisinopril", "zestril", "prinivil"],
+                "common_misspellings": ["lisinopral", "lisinipril", "zestrel"]
+            },
+            "memantine": {
+                "generic": "memantine",
+                "brand": "Namenda",
+                "drug_class": "NMDA Antagonist",
+                "aliases": ["memantine", "namenda"],
+                "common_misspellings": ["memantene", "memantin", "namenda"]
+            },
+            "magnesium": {
+                "generic": "magnesium",
+                "brand": "Magnesium",
+                "drug_class": "Supplement",
+                "aliases": ["magnesium", "magnesium oxide", "magnesium citrate", "mag oxide"],
+                "common_misspellings": ["magnisium", "magneseum"]
+            },
+            "riboflavin": {
+                "generic": "riboflavin",
+                "brand": "Vitamin B2",
+                "drug_class": "Supplement",
+                "aliases": ["riboflavin", "vitamin b2", "b2"],
+                "common_misspellings": ["riboflavine", "riboflabin"]
+            },
+            "coq10": {
+                "generic": "coenzyme q10",
+                "brand": "CoQ10",
+                "drug_class": "Supplement",
+                "aliases": ["coenzyme q10", "coq10", "ubiquinone"],
+                "common_misspellings": ["coq-10", "co-q10"]
+            },
+        }
+        
+        # Build lookup indices
+        self.alias_to_key = {}
+        self.generic_to_key = {}
+        self.brand_to_key = {}
+        
+        for key, med_data in self.medication_db.items():
+            self.generic_to_key[med_data["generic"].lower()] = key
+            self.brand_to_key[med_data["brand"].lower()] = key
+            for alias in med_data["aliases"]:
+                self.alias_to_key[alias.lower()] = key
+                
+    def normalize_input(self, text: str) -> str:
+        """Normalize medication name input"""
+        import re
+        text = text.lower()
+        # Remove dosage information
+        text = re.sub(r'\d+\.?\d*\s*(mg|mcg|ml|g|units?)\b.*$', '', text, flags=re.IGNORECASE)
+        # Remove common suffixes
+        text = re.sub(r'\s+(tablets?|capsules?|injection|subcutaneous|oral|daily|bid|tid|qd|prn)\b.*$', '', text, flags=re.IGNORECASE)
+        # Remove parenthetical content
+        text = re.sub(r'\([^)]*\)', '', text)
+        # Clean up whitespace and hyphens
+        text = text.replace('-', ' ')
+        text = ' '.join(text.split())
+        return text.strip()
+        
+    def fuzzy_match(self, input_text: str, candidate: str, threshold: float = 0.85) -> float:
+        """Calculate similarity ratio between input and candidate"""
+        return self.SequenceMatcher(None, input_text.lower(), candidate.lower()).ratio()
+        
+    def find_medication(self, input_text: str, threshold: float = 0.80) -> Optional[dict]:
+        """
+        Find medication using multi-strategy matching
+        Returns dict with medication data or None
+        """
+        normalized = self.normalize_input(input_text)
+        
+        # Strategy 1: Exact match
+        if normalized in self.alias_to_key:
+            key = self.alias_to_key[normalized]
+            return self._build_result(key, 1.0, "exact_alias")
+            
+        if normalized in self.generic_to_key:
+            key = self.generic_to_key[normalized]
+            return self._build_result(key, 1.0, "exact_generic")
+            
+        if normalized in self.brand_to_key:
+            key = self.brand_to_key[normalized]
+            return self._build_result(key, 1.0, "exact_brand")
+        
+        # Strategy 2: Fuzzy match against aliases
+        best_match = None
+        best_score = 0.0
+        
+        for alias, key in self.alias_to_key.items():
+            score = self.fuzzy_match(normalized, alias)
+            if score > best_score and score >= threshold:
+                best_score = score
+                best_match = key
+                
+        if best_match:
+            return self._build_result(best_match, best_score, "fuzzy_alias")
+            
+        # Strategy 3: Fuzzy match against common misspellings
+        for key, med_data in self.medication_db.items():
+            for misspelling in med_data.get("common_misspellings", []):
+                score = self.fuzzy_match(normalized, misspelling)
+                if score > best_score and score >= threshold:
+                    best_score = score
+                    best_match = key
+                    
+        if best_match:
+            return self._build_result(best_match, best_score, "fuzzy_misspelling")
+            
+        # Strategy 4: Fuzzy match against all medication keys
+        for key in self.medication_db.keys():
+            score = self.fuzzy_match(normalized, key)
+            if score > best_score and score >= threshold:
+                best_score = score
+                best_match = key
+                
+        if best_match:
+            return self._build_result(best_match, best_score, "fuzzy_key")
+            
+        return None
+        
+    def _build_result(self, key: str, confidence: float, match_type: str) -> dict:
+        """Build result dictionary with medication data"""
+        med_data = self.medication_db[key]
+        return {
+            "key": key,
+            "generic": med_data["generic"],
+            "brand": med_data["brand"],
+            "drug_class": med_data["drug_class"],
+            "confidence": confidence,
+            "match_type": match_type,
+            "all_aliases": med_data["aliases"]
+        }
+        
+    def get_drug_class(self, medication_name: str) -> Optional[str]:
+        """Get drug class for a medication name"""
+        result = self.find_medication(medication_name)
+        return result["drug_class"] if result else None
+        
+    def search_multiple(self, medication_list: List[str], threshold: float = 0.80) -> List[dict]:
+        """Search for multiple medications and return results"""
+        results = []
+        for med in medication_list:
+            match = self.find_medication(med, threshold)
+            if match:
+                match["original_input"] = med  # Keep track of original input
+                results.append(match)
+        return results
+
+
+# Initialize global medication matcher
+medication_matcher = MedicationMatcher()
+
+
+# ============================================================================
 # GUIDED DATA COLLECTION SYSTEM
 # ============================================================================
 
@@ -552,22 +978,40 @@ DISCONTINUATION_REASONS = [
 ]
 
 def create_medication_trials_from_parsed(prior_medications: List[str]) -> List[MedicationTrial]:
-    """Convert parsed medication names into MedicationTrial objects with reference data."""
+    """Convert parsed medication names into MedicationTrial objects with reference data.
+    
+    Uses MedicationMatcher for robust name matching, then cross-references with
+    THERAPEUTIC_DOSES for dosing thresholds.
+    """
     trials = []
     
     for med_name in prior_medications:
         med_lower = med_name.lower().strip()
         
-        # Find matching therapeutic reference
+        # First, try MedicationMatcher for robust name recognition
+        med_match = medication_matcher.find_medication(med_name, threshold=0.80)
+        
+        # Find matching therapeutic reference (for dosing info)
         matched_ref = None
+        search_key = med_match['generic'] if med_match else med_lower
         for ref_name, ref_data in THERAPEUTIC_DOSES.items():
-            if ref_name in med_lower:
+            if ref_name in search_key.lower() or search_key.lower() in ref_name:
                 matched_ref = (ref_name, ref_data)
                 break
         
+        # Use MedicationMatcher drug_class if available, otherwise fall back to THERAPEUTIC_DOSES
+        drug_class = None
+        if med_match:
+            drug_class = med_match['drug_class']
+        elif matched_ref:
+            drug_class = matched_ref[1]['class']
+        
+        # Use brand name from matcher if available for cleaner display
+        display_name = med_match['brand'] if med_match else med_name.title()
+        
         trial = MedicationTrial(
-            medication_name=med_name.title(),
-            drug_class=matched_ref[1]['class'] if matched_ref else None,
+            medication_name=display_name,
+            drug_class=drug_class,
             therapeutic_dose_min=matched_ref[1]['min_dose'] if matched_ref else None,
             therapeutic_dose_max=matched_ref[1]['max_dose'] if matched_ref else None,
             recommended_duration_weeks=matched_ref[1]['min_weeks'] if matched_ref else 8
@@ -3396,11 +3840,36 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
                 if st.button("📋 Copy", key="copy_payer"):
                     st.toast("✅ Payer copied!", icon="✅")
         
-        # Prior medications
+        # Prior medications with MedicationMatcher
         if parsed.get('prior_medications') and len(parsed['prior_medications']) > 0:
             st.markdown("**Prior Medications:**")
-            for med in parsed['prior_medications']:
-                st.markdown(f"- {med}")
+            
+            # Use MedicationMatcher to validate and enhance medication names
+            failed_med_matches = medication_matcher.search_multiple(parsed['prior_medications'], threshold=0.80)
+            
+            if failed_med_matches:
+                # Group by drug class for step therapy analysis
+                drug_classes_found = set()
+                for match in failed_med_matches:
+                    drug_classes_found.add(match['drug_class'])
+                    confidence_indicator = "✓" if match['confidence'] >= 0.95 else "~"
+                    st.markdown(f"- {confidence_indicator} **{match['brand']}** ({match['generic']}) — *{match['drug_class']}*")
+                
+                # Show step therapy summary
+                step_therapy_classes = {'Beta-blocker', 'Anticonvulsant', 'TCA', 'SNRI', 'CCB', 'ARB', 'ACE Inhibitor'}
+                relevant_classes = drug_classes_found.intersection(step_therapy_classes)
+                if relevant_classes:
+                    st.success(f"✅ **{len(relevant_classes)} preventive class(es) documented:** {', '.join(sorted(relevant_classes))}")
+                
+                # Show unmatched medications (if any)
+                matched_originals = {m.get('original_input', '').lower() for m in failed_med_matches}
+                unmatched = [med for med in parsed['prior_medications'] if med.lower() not in matched_originals]
+                if unmatched:
+                    st.warning(f"⚠️ Could not match: {', '.join(unmatched)}")
+            else:
+                # Fallback to simple list if no matches
+                for med in parsed['prior_medications']:
+                    st.markdown(f"- {med}")
         
         # Edit mode
         with st.expander("✏️ Edit Extracted Data", expanded=False):
