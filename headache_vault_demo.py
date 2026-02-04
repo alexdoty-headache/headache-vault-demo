@@ -2283,7 +2283,9 @@ elif st.session_state.current_page == 'Search':
             # Get values safely
             headache_type = st.session_state.get('headache_type', 'Chronic Migraine')
             diag = st.session_state.parsed_data.get('diagnosis', headache_type) if 'parsed_data' in st.session_state else headache_type
-            age = st.session_state.get('patient_age', 35)
+            age = st.session_state.get('patient_age')
+            if age is None:
+                age = 35  # Default adult age if not specified
             drug = st.session_state.get('selected_drug', row['Drug_Class'])
             state = row['State']
             
