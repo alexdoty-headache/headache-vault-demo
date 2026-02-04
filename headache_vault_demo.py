@@ -3142,7 +3142,9 @@ Required Duration: {step_dur}
 
 """
                     # Check for enriched medication trial data first
-                    session_key = f"medication_trials_{selected_idx}"
+                    # Use selected_policy_idx from session state, default to 0
+                    policy_idx = st.session_state.get('selected_policy_idx', 0)
+                    session_key = f"medication_trials_{policy_idx}"
                     if session_key in st.session_state and st.session_state[session_key]:
                         medication_trials = st.session_state[session_key]
                         pa_text += """DOCUMENTED PRIOR MEDICATION TRIALS
