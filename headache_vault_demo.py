@@ -1448,6 +1448,25 @@ st.markdown("""
         color: #262730 !important;
     }
     
+    /* Toast notification styling - fix visibility */
+    [data-testid="stToast"], 
+    .stToast,
+    div[data-baseweb="toast"] {
+        background-color: #10B981 !important;
+        color: white !important;
+    }
+    
+    [data-testid="stToast"] *,
+    .stToast *,
+    div[data-baseweb="toast"] * {
+        color: white !important;
+    }
+    
+    /* Toast container */
+    [data-testid="toastContainer"] {
+        z-index: 9999 !important;
+    }
+    
     /* Caption text visibility */
     .stCaption {
         color: #708090 !important;  /* Slate gray - readable on white */
