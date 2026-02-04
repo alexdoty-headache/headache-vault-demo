@@ -9,6 +9,328 @@ from dataclasses import dataclass, field
 from typing import Optional, List, Tuple
 
 # ============================================================================
+# ERROR MESSAGING SYSTEM v2 - Clean, Actionable Error Messages
+# ============================================================================
+
+class ErrorSeverity(Enum):
+    """Error severity levels"""
+    INFO = "info"
+    WARNING = "warning"
+    ERROR = "error"
+
+
+@dataclass  
+class ErrorMessage:
+    """Simple, actionable error message"""
+    severity: ErrorSeverity
+    title: str
+    description: str
+    actions: List[str]
+    appeal_tip: Optional[str] = None
+    
+    def __str__(self):
+        """Default string representation"""
+        icon = {"info": "ℹ️", "warning": "⚠️", "error": "❌"}[self.severity.value]
+        lines = [
+            f"{icon} {self.title}",
+            "",
+            self.description,
+            "",
+            "What to do:"
+        ]
+        lines.extend(f"  • {action}" for action in self.actions)
+        
+        if self.appeal_tip:
+            lines.extend(["", f"💡 Appeal Tip: {self.appeal_tip}"])
+        
+        return "\n".join(lines)
+
+
+def create_error(error_type: str, **context) -> ErrorMessage:
+    """Create error message based on type and context"""
+    
+    errors = {
+        # Medication errors
+        "med_not_found": ErrorMessage(
+            severity=ErrorSeverity.ERROR,
+            title="Medication Not Recognized",
+            description=f"We couldn't find '{context.get('medication', 'this medication')}' in our database.",
+            actions=[
+                "Check spelling (e.g., 'propranolol' not 'propanolol')",
+                "Try brand name (e.g., 'Aimovig') or generic (e.g., 'erenumab')",
+                "Remove dosage info (e.g., 'Aimovig' not 'Aimovig 70mg')"
+            ]
+        ),
+        
+        # Step therapy errors
+        "insufficient_trials": ErrorMessage(
+            severity=ErrorSeverity.ERROR,
+            title="Need More Preventive Medication Trials",
+            description=f"Documented {context.get('current', 1)} preventive class(es), need {context.get('required', 2)}.",
+            actions=[
+                f"Add trials from: {context.get('missing', 'Anticonvulsant, TCA, or SNRI')}",
+                "Each trial needs: ≥8 weeks at therapeutic dose",
+                "Document why stopped (side effects, didn't work, contraindication)",
+                "Examples: topiramate 100mg, propranolol 80mg, amitriptyline 50mg"
+            ],
+            appeal_tip="If patient can't tolerate required meds (side effects, contraindications), document this clearly and cite AHS guidelines"
+        ),
+        
+        "low_doses": ErrorMessage(
+            severity=ErrorSeverity.WARNING,
+            title="Medication Doses May Be Too Low",
+            description="Some preventive trials may not have reached therapeutic dose.",
+            actions=[
+                "Propranolol: ≥80mg/day",
+                "Topiramate: ≥100mg/day",
+                "Amitriptyline: ≥50mg/day",
+                "Document reason if lower dose used (e.g., side effects prevented increase)"
+            ],
+            appeal_tip="Explain that patient couldn't tolerate higher doses due to specific side effects"
+        ),
+        
+        "short_trials": ErrorMessage(
+            severity=ErrorSeverity.WARNING,
+            title="Medication Trials May Be Too Short",
+            description="AHS guidelines recommend ≥8 week trials for preventive medications.",
+            actions=[
+                "Document each medication was tried for ≥8 weeks",
+                "If stopped early, explain why (severe side effects, allergic reaction)",
+                "Include specific dates: started X, stopped Y due to Z"
+            ],
+            appeal_tip="Early discontinuation due to intolerable side effects is acceptable - document clearly"
+        ),
+        
+        # Frequency errors
+        "frequency_low": ErrorMessage(
+            severity=ErrorSeverity.ERROR,
+            title="Headache Frequency Below Threshold",
+            description=f"Documented {context.get('current', 0)} days/month, payer requires ≥{context.get('required', 4)} days/month.",
+            actions=[
+                "Verify frequency from 3-month headache diary",
+                "Document disability: MIDAS score (>21 = severe), HIT-6 score (>60 = severe impact)",
+                "Note missed work/school days",
+                "If truly <4 days/month, consider acute treatment (Ubrelvy, Nurtec) instead"
+            ],
+            appeal_tip=f"Emphasize impact over frequency. Include MIDAS{' score ' + context.get('midas', '') if context.get('midas') else ''} showing severe disability despite lower frequency"
+        ),
+        
+        "frequency_missing": ErrorMessage(
+            severity=ErrorSeverity.ERROR,
+            title="Headache Frequency Not Documented",
+            description="PA requires headache frequency (days per month).",
+            actions=[
+                "Add: 'Patient has [X] headache days per month'",
+                "Base on patient diary or 3-month recall",
+                "Include assessment period (e.g., 'over past 3 months')"
+            ]
+        ),
+        
+        # Diagnosis errors
+        "wrong_diagnosis": ErrorMessage(
+            severity=ErrorSeverity.ERROR,
+            title="Diagnosis Code Issue",
+            description="ICD-10 code may not match requested medication.",
+            actions=[
+                "Chronic migraine (≥15 days/month): G43.709 or G43.719",
+                "Episodic migraine (4-14 days/month): G43.909",
+                "Cluster headache: G44.009",
+                "Botox REQUIRES chronic migraine diagnosis (≥15 days/month)"
+            ]
+        ),
+        
+        "botox_needs_chronic": ErrorMessage(
+            severity=ErrorSeverity.ERROR,
+            title="Botox Requires Chronic Migraine",
+            description="Botox is only approved for chronic migraine (≥15 headache days/month for ≥3 months).",
+            actions=[
+                "If patient has <15 days/month, request CGRP mAb instead (Aimovig, Emgality, Ajovy)",
+                "If patient has ≥15 days/month, update diagnosis to G43.709 or G43.719",
+                "Document frequency from 3-month diary"
+            ]
+        ),
+        
+        # Helpful bypass info
+        "cv_bypass": ErrorMessage(
+            severity=ErrorSeverity.INFO,
+            title="✓ CV Contraindication Bypass Available",
+            description="Patient has cardiovascular condition - first-line CGRP/gepant may be approved without full step therapy.",
+            actions=[
+                "Document CV diagnosis: CAD, stroke, uncontrolled HTN, peripheral vascular disease",
+                "Note contraindication to triptans (FDA labeling)",
+                "Reference AHS 2024 guidelines supporting gepants in CV patients",
+                "Bypass approved - may not need 2-3 preventive failures"
+            ],
+            appeal_tip="Cite specific CV condition and safety data for gepants/CGRPs in cardiovascular population"
+        ),
+        
+        "pregnancy_bypass": ErrorMessage(
+            severity=ErrorSeverity.INFO,
+            title="✓ Teratogen Bypass Available",
+            description="Patient is female of childbearing age - can skip teratogenic preventives.",
+            actions=[
+                "Document patient is female, age 12-55",
+                "Note contraindication to valproate (FDA Category X) and topiramate (FDA Category D)",
+                "Can proceed to CGRP without trying these medications",
+                "Reference FDA pregnancy warnings"
+            ],
+            appeal_tip="Teratogenic risk makes valproate/topiramate inappropriate - CGRP represents safer alternative"
+        ),
+        
+        "moh_risk": ErrorMessage(
+            severity=ErrorSeverity.WARNING,
+            title="Medication Overuse Headache Risk Detected",
+            description=f"Patient using acute meds ≥{context.get('frequency', 10)} days/month - MOH risk.",
+            actions=[
+                "Document acute medication frequency (triptan/NSAID/combination analgesic days/month)",
+                "Note this increases urgency for preventive therapy",
+                "Include in PA justification: 'Patient at high risk for MOH, preventive therapy urgent'",
+                "Preventive therapy helps reduce acute medication use"
+            ],
+            appeal_tip="High MOH risk strengthens case for preventive therapy urgency"
+        ),
+        
+        # Success messages
+        "approved": ErrorMessage(
+            severity=ErrorSeverity.INFO,
+            title="✓ PA Ready to Submit",
+            description="All requirements met. PA looks good!",
+            actions=[
+                "Review generated PA for accuracy",
+                "Add any additional clinical details",
+                "Submit to payer (portal, fax, or electronic)",
+                "Follow up in 5-7 business days"
+            ]
+        ),
+        
+        "strong_pa": ErrorMessage(
+            severity=ErrorSeverity.INFO,
+            title="✓ Strong PA - High Approval Probability",
+            description="Excellent documentation. Expected approval rate >90%.",
+            actions=[
+                "Consider expedited review if urgent",
+                "Have follow-up plan ready",
+                "Track submission for timely response"
+            ]
+        ),
+        
+        # System errors
+        "payer_not_found": ErrorMessage(
+            severity=ErrorSeverity.WARNING,
+            title="Payer Policy Not in Database",
+            description=f"We don't have specific policy for '{context.get('payer', 'this payer')}'.",
+            actions=[
+                "Using national commercial insurance criteria as fallback",
+                "Verify insurance name spelling",
+                "Check payer's formulary directly for specific requirements",
+                "Contact us to add this payer to database"
+            ]
+        ),
+        
+        # State not selected
+        "state_required": ErrorMessage(
+            severity=ErrorSeverity.ERROR,
+            title="State Selection Required",
+            description="Please select a state to search for payer policies.",
+            actions=[
+                "Select the patient's state from the sidebar dropdown",
+                "This determines which payer policies apply",
+                "Policies vary significantly by state"
+            ]
+        ),
+        
+        # Age not detected
+        "age_not_detected": ErrorMessage(
+            severity=ErrorSeverity.WARNING,
+            title="Patient Age Not Detected",
+            description="Age is needed to check pediatric restrictions and dosing.",
+            actions=[
+                "Enter patient age in the sidebar",
+                "Pediatric patients (<18) have different FDA approvals",
+                "Some medications require weight-based dosing for children"
+            ]
+        ),
+    }
+    
+    return errors.get(error_type, ErrorMessage(
+        severity=ErrorSeverity.ERROR,
+        title="Unknown Error",
+        description=f"Error type '{error_type}' not recognized.",
+        actions=["Contact support for assistance"]
+    ))
+
+
+def render_error_message(error: ErrorMessage, expanded: bool = True):
+    """Render an ErrorMessage using Streamlit components with nice formatting."""
+    
+    # Color schemes by severity
+    colors = {
+        ErrorSeverity.INFO: {
+            "bg": "#E0F2FE",      # Light blue
+            "border": "#0EA5E9",   # Blue
+            "text": "#0369A1",     # Dark blue
+            "icon": "ℹ️"
+        },
+        ErrorSeverity.WARNING: {
+            "bg": "#FEF3C7",      # Light yellow
+            "border": "#F59E0B",   # Amber
+            "text": "#92400E",     # Dark amber
+            "icon": "⚠️"
+        },
+        ErrorSeverity.ERROR: {
+            "bg": "#FEE2E2",      # Light red
+            "border": "#EF4444",   # Red
+            "text": "#991B1B",     # Dark red
+            "icon": "❌"
+        }
+    }
+    
+    c = colors[error.severity]
+    
+    # Build actions list HTML
+    actions_html = "".join([f"<li style='margin-bottom: 4px;'>{action}</li>" for action in error.actions])
+    
+    # Appeal tip HTML (if present)
+    appeal_html = ""
+    if error.appeal_tip:
+        appeal_html = f"""
+        <div style="background: #F0FDF4; border-left: 3px solid #22C55E; padding: 8px 12px; margin-top: 12px; border-radius: 4px;">
+            <strong style="color: #166534;">💡 Appeal Tip:</strong>
+            <span style="color: #166534;">{error.appeal_tip}</span>
+        </div>
+        """
+    
+    # Full message HTML
+    html = f"""
+    <div style="background: {c['bg']}; border: 1px solid {c['border']}; border-left: 4px solid {c['border']}; 
+                border-radius: 8px; padding: 16px; margin: 12px 0;">
+        <div style="font-weight: 700; color: {c['text']}; font-size: 1.05rem; margin-bottom: 8px;">
+            {c['icon']} {error.title}
+        </div>
+        <div style="color: {c['text']}; margin-bottom: 12px;">
+            {error.description}
+        </div>
+        <div style="color: {c['text']};">
+            <strong>What to do:</strong>
+            <ul style="margin: 8px 0 0 0; padding-left: 20px;">
+                {actions_html}
+            </ul>
+        </div>
+        {appeal_html}
+    </div>
+    """
+    
+    st.markdown(html, unsafe_allow_html=True)
+
+
+def show_error(error_type: str, **context):
+    """Convenience function: create and render an error in one call."""
+    error = create_error(error_type, **context)
+    render_error_message(error)
+    return error
+
+
+# ============================================================================
 # GUIDED DATA COLLECTION SYSTEM
 # ============================================================================
 
@@ -2527,7 +2849,7 @@ Step Therapy: REQUIRED ({step_req}, {step_dur})
     # Check if user still needs to select a state
     state_not_selected = selected_state == "-- Please Select State --"
     if state_not_selected:
-        st.sidebar.warning("⚠️ Please select a state to search policies")
+        st.sidebar.error("⚠️ Please select a state to search")
         # Use placeholder options when no state selected
         payer_options = ['All Payers']
         state_drug_classes = ['CGRP mAbs']  # Default option
@@ -2658,7 +2980,9 @@ Step Therapy: REQUIRED ({step_req}, {step_dur})
         
         # Show fallback notice if applicable
         if st.session_state.get('fallback_used', False):
-            st.info(st.session_state.get('fallback_message', ''))
+            # Extract payer name from message for error context
+            fallback_msg = st.session_state.get('fallback_message', '')
+            show_error("payer_not_found", payer=st.session_state.get('selected_payer', 'this payer'))
         
         if len(results) == 0:
             st.warning("⚠️ No policies found for this combination.")
@@ -2785,9 +3109,28 @@ Step Therapy: REQUIRED ({step_req}, {step_dur})
                                     """, unsafe_allow_html=True)
                             
                             if all_met:
-                                st.success("🎉 **Patient meets all step therapy requirements!** PA likely to be approved.")
+                                show_error("approved")
                             else:
-                                st.warning("⚠️ **Some requirements may not be documented.** Review clinical note or document missing trials.")
+                                # Count what's missing for a more specific error
+                                unmet_requirements = [req for req, met, _ in criteria_results if not met]
+                                met_count = sum(1 for _, met, _ in criteria_results if met)
+                                total_required = len(criteria_results)
+                                
+                                # Determine what types of medications are missing
+                                missing_classes = []
+                                for req, met, details in criteria_results:
+                                    if not met:
+                                        if 'preventive' in req.lower():
+                                            missing_classes.append("oral preventive (e.g., topiramate, propranolol, amitriptyline)")
+                                        elif 'triptan' in req.lower():
+                                            missing_classes.append("triptan trial")
+                                        elif 'verapamil' in req.lower() or 'lithium' in req.lower():
+                                            missing_classes.append("verapamil or lithium")
+                                
+                                show_error("insufficient_trials", 
+                                          current=met_count, 
+                                          required=total_required,
+                                          missing=", ".join(missing_classes) if missing_classes else "additional medication trials")
                     
                     st.markdown("</div>", unsafe_allow_html=True)
                 else:
@@ -3070,7 +3413,7 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
             else:
                 state_index = 0  # Default to first alphabetically (AL or ALL)
                 if not parsed.get('state'):
-                    st.warning("⚠️ **State not detected in note** - Please select the correct state")
+                    show_error("state_required")
             
             edited_state = st.selectbox("State", options=state_options, index=state_index)
             
@@ -3117,7 +3460,7 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
                 age_value = parsed['age']
             else:
                 age_value = 40  # Neutral default
-                st.warning("⚠️ **Age not detected in note** - Please enter patient age")
+                show_error("age_not_detected")
             
             edited_age = st.number_input("Age", min_value=1, max_value=120, value=age_value)
             
