@@ -1177,15 +1177,33 @@ DISCONTINUATION_REASONS = [
     "Other"
 ]
 
-def create_medication_trials_from_parsed(prior_medications: List[str]) -> List[MedicationTrial]:
-    """Convert parsed medication names into MedicationTrial objects with reference data.
+def create_medication_trials_from_parsed(prior_medications) -> List[MedicationTrial]:
+    """Convert parsed medication data into MedicationTrial objects with reference data.
     
+    Handles both old format (list of strings) and new format (list of dicts with dose/duration/reason).
     Uses MedicationMatcher for robust name matching, then cross-references with
     THERAPEUTIC_DOSES for dosing thresholds.
     """
     trials = []
     
-    for med_name in prior_medications:
+    for med_data in prior_medications:
+        # Handle both old format (string) and new format (dict)
+        if isinstance(med_data, str):
+            med_name = med_data
+            parsed_dose = None
+            parsed_duration = None
+            parsed_reason = None
+        elif isinstance(med_data, dict):
+            med_name = med_data.get('name', '')
+            parsed_dose = med_data.get('dose')
+            parsed_duration = med_data.get('duration_weeks')
+            parsed_reason = med_data.get('reason_stopped')
+        else:
+            continue
+        
+        if not med_name:
+            continue
+            
         med_lower = med_name.lower().strip()
         
         # First, try MedicationMatcher for robust name recognition
@@ -1209,9 +1227,20 @@ def create_medication_trials_from_parsed(prior_medications: List[str]) -> List[M
         # Use brand name from matcher if available for cleaner display
         display_name = med_match['brand'] if med_match else med_name.title()
         
+        # Convert duration to int if it's a valid number
+        duration_weeks = None
+        if parsed_duration is not None:
+            try:
+                duration_weeks = int(parsed_duration)
+            except (ValueError, TypeError):
+                pass
+        
         trial = MedicationTrial(
             medication_name=display_name,
             drug_class=drug_class,
+            dose=parsed_dose,
+            duration_weeks=duration_weeks,
+            reason_stopped=parsed_reason,
             therapeutic_dose_min=matched_ref[1]['min_dose'] if matched_ref else None,
             therapeutic_dose_max=matched_ref[1]['max_dose'] if matched_ref else None,
             recommended_duration_weeks=matched_ref[1]['min_weeks'] if matched_ref else 8
@@ -2816,15 +2845,32 @@ JSON format:
   "payer": "insurance company name or null if NO insurance mentioned", 
   "drug_class": "medication class or null if NO specific drug requested",
   "diagnosis": "Chronic Migraine, Episodic Migraine, or Cluster Headache based on symptoms",
-  "age": "integer or null if NO age mentioned",
-  "prior_medications": ["only medications EXPLICITLY named as tried/failed"],
-  "confidence": "high/medium/low based on how much info was explicitly stated"
-}}
-  "diagnosis": "Chronic Migraine, Episodic Migraine, or Cluster Headache based on symptoms",
   "age": integer age or null if NOT explicitly stated,
-  "prior_medications": ["medications that failed - only include if explicitly named"],
+  "prior_medications": [
+    {{
+      "name": "medication name (generic preferred)",
+      "dose": "dose with units (e.g., '100mg daily', '80mg BID') or null if not stated",
+      "duration_weeks": integer weeks or null if not stated (convert months to weeks: 1mo=4wks, 3mo=12wks),
+      "reason_stopped": "reason discontinued (e.g., 'side effects - cognitive issues', 'ineffective', 'intolerance') or null if not stated"
+    }}
+  ],
   "confidence": "high if most fields found, medium if some missing, low if minimal info"
 }}
+
+PRIOR MEDICATION EXTRACTION RULES:
+- Extract EACH medication that was tried/failed as a separate object
+- Include the MAXIMUM dose reached (not starting dose)
+- Convert durations to weeks: "3 months" = 12, "10 weeks" = 10, "6 weeks" = 6
+- For reason_stopped, summarize the key issue (side effects, ineffective, intolerance, etc.)
+- If dose/duration/reason not explicitly stated for a medication, use null for that field
+
+EXAMPLES:
+- "Topiramate 100mg daily for 12 weeks, stopped due to cognitive issues" →
+  {{"name": "topiramate", "dose": "100mg daily", "duration_weeks": 12, "reason_stopped": "cognitive side effects"}}
+- "Tried propranolol but couldn't tolerate it" →
+  {{"name": "propranolol", "dose": null, "duration_weeks": null, "reason_stopped": "intolerance"}}
+- "Failed amitriptyline 75mg" →
+  {{"name": "amitriptyline", "dose": "75mg", "duration_weeks": null, "reason_stopped": null}}
 
 Common payers in database:
 {', '.join(payers[:40])}
@@ -4093,8 +4139,22 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
         if parsed.get('prior_medications') and len(parsed['prior_medications']) > 0:
             st.markdown("**Prior Medications:**")
             
+            # Handle both old format (list of strings) and new format (list of dicts)
+            prior_meds = parsed['prior_medications']
+            
+            # Extract medication names for matching
+            med_names = []
+            med_details = {}  # Store details keyed by lowercase name
+            for med in prior_meds:
+                if isinstance(med, str):
+                    med_names.append(med)
+                elif isinstance(med, dict) and med.get('name'):
+                    name = med['name']
+                    med_names.append(name)
+                    med_details[name.lower()] = med
+            
             # Use MedicationMatcher to validate and enhance medication names
-            failed_med_matches = medication_matcher.search_multiple(parsed['prior_medications'], threshold=0.80)
+            failed_med_matches = medication_matcher.search_multiple(med_names, threshold=0.80)
             
             if failed_med_matches:
                 # Group by drug class for step therapy analysis
@@ -4102,7 +4162,27 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
                 for match in failed_med_matches:
                     drug_classes_found.add(match['drug_class'])
                     confidence_indicator = "✓" if match['confidence'] >= 0.95 else "~"
-                    st.markdown(f"- {confidence_indicator} **{match['brand']}** ({match['generic']}) — *{match['drug_class']}*")
+                    
+                    # Look up structured details if available
+                    original_input = match.get('original_input', '').lower()
+                    details = med_details.get(original_input, {})
+                    
+                    # Build display line
+                    display_line = f"- {confidence_indicator} **{match['brand']}** ({match['generic']}) — *{match['drug_class']}*"
+                    
+                    # Add dose/duration/reason if available
+                    detail_parts = []
+                    if details.get('dose'):
+                        detail_parts.append(details['dose'])
+                    if details.get('duration_weeks'):
+                        detail_parts.append(f"{details['duration_weeks']} weeks")
+                    if details.get('reason_stopped'):
+                        detail_parts.append(f"stopped: {details['reason_stopped']}")
+                    
+                    if detail_parts:
+                        display_line += f" | {' | '.join(detail_parts)}"
+                    
+                    st.markdown(display_line)
                 
                 # Show step therapy summary
                 step_therapy_classes = {'Beta-blocker', 'Anticonvulsant', 'TCA', 'SNRI', 'CCB', 'ARB', 'ACE Inhibitor'}
@@ -4112,13 +4192,21 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
                 
                 # Show unmatched medications (if any)
                 matched_originals = {m.get('original_input', '').lower() for m in failed_med_matches}
-                unmatched = [med for med in parsed['prior_medications'] if med.lower() not in matched_originals]
+                unmatched = [name for name in med_names if name.lower() not in matched_originals]
                 if unmatched:
                     st.warning(f"⚠️ Could not match: {', '.join(unmatched)}")
             else:
                 # Fallback to simple list if no matches
-                for med in parsed['prior_medications']:
-                    st.markdown(f"- {med}")
+                for med in prior_meds:
+                    if isinstance(med, str):
+                        st.markdown(f"- {med}")
+                    elif isinstance(med, dict):
+                        name = med.get('name', 'Unknown')
+                        dose = med.get('dose', '')
+                        dur = med.get('duration_weeks', '')
+                        reason = med.get('reason_stopped', '')
+                        details = [d for d in [dose, f"{dur} weeks" if dur else '', reason] if d]
+                        st.markdown(f"- {name}" + (f" | {' | '.join(details)}" if details else ""))
         
         # Edit mode
         with st.expander("✏️ Edit Extracted Data", expanded=False):
