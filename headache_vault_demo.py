@@ -2793,6 +2793,289 @@ def create_copy_button(text, button_id):
     </button>
     """
 
+# ============================================================================
+# STATE & AGE HALLUCINATION GUARDS (50-state + DC validator)
+# ============================================================================
+
+# Every state's full name (used for exact substring match)
+STATE_FULL_NAMES = {
+    'AL': 'alabama', 'AK': 'alaska', 'AZ': 'arizona', 'AR': 'arkansas',
+    'CA': 'california', 'CO': 'colorado', 'CT': 'connecticut', 'DE': 'delaware',
+    'FL': 'florida', 'GA': 'georgia', 'HI': 'hawaii', 'ID': 'idaho',
+    'IL': 'illinois', 'IN': 'indiana', 'IA': 'iowa', 'KS': 'kansas',
+    'KY': 'kentucky', 'LA': 'louisiana', 'ME': 'maine', 'MD': 'maryland',
+    'MA': 'massachusetts', 'MI': 'michigan', 'MN': 'minnesota', 'MS': 'mississippi',
+    'MO': 'missouri', 'MT': 'montana', 'NE': 'nebraska', 'NV': 'nevada',
+    'NH': 'new hampshire', 'NJ': 'new jersey', 'NM': 'new mexico', 'NY': 'new york',
+    'NC': 'north carolina', 'ND': 'north dakota', 'OH': 'ohio', 'OK': 'oklahoma',
+    'OR': 'oregon', 'PA': 'pennsylvania', 'RI': 'rhode island', 'SC': 'south carolina',
+    'SD': 'south dakota', 'TN': 'tennessee', 'TX': 'texas', 'UT': 'utah',
+    'VT': 'vermont', 'VA': 'virginia', 'WA': 'washington', 'WV': 'west virginia',
+    'WI': 'wisconsin', 'WY': 'wyoming', 'DC': 'district of columbia',
+}
+
+# Abbreviations that collide with common English words — need extra care.
+AMBIGUOUS_ABBREVIATIONS = {
+    'AL', 'AR', 'CO', 'DC', 'DE', 'HI', 'ID', 'IL', 'IN', 'LA',
+    'MA', 'MD', 'ME', 'MI', 'MO', 'MT', 'NE', 'OH', 'OK', 'OR',
+    'PA', 'VA', 'WA',
+}
+
+# Major cities → state code. Ambiguous cities map to None.
+CITY_TO_STATE = {
+    # --- PA ---
+    'philadelphia': 'PA', 'pittsburgh': 'PA', 'harrisburg': 'PA', 'allentown': 'PA',
+    # --- NY ---
+    'manhattan': 'NY', 'brooklyn': 'NY', 'buffalo': 'NY', 'queens': 'NY', 'bronx': 'NY',
+    'staten island': 'NY', 'syracuse': 'NY', 'albany': 'NY',
+    # --- CA ---
+    'los angeles': 'CA', 'san francisco': 'CA', 'san diego': 'CA', 'sacramento': 'CA',
+    'san jose': 'CA', 'fresno': 'CA', 'oakland': 'CA', 'long beach': 'CA',
+    # --- TX ---
+    'houston': 'TX', 'dallas': 'TX', 'austin': 'TX', 'san antonio': 'TX',
+    'fort worth': 'TX', 'el paso': 'TX', 'lubbock': 'TX', 'corpus christi': 'TX',
+    # --- FL ---
+    'miami': 'FL', 'orlando': 'FL', 'tampa': 'FL', 'jacksonville': 'FL',
+    'fort lauderdale': 'FL', 'st. petersburg': 'FL', 'tallahassee': 'FL',
+    # --- IL ---
+    'chicago': 'IL', 'naperville': 'IL', 'rockford': 'IL', 'peoria': 'IL',
+    # --- OH ---
+    'cleveland': 'OH', 'columbus': 'OH', 'cincinnati': 'OH', 'akron': 'OH', 'dayton': 'OH',
+    # --- NJ ---
+    'newark': 'NJ', 'jersey city': 'NJ', 'trenton': 'NJ', 'paterson': 'NJ',
+    # --- MA ---
+    'boston': 'MA', 'cambridge': 'MA', 'worcester': 'MA',
+    # --- GA ---
+    'atlanta': 'GA', 'savannah': 'GA', 'augusta': 'GA',
+    # --- NC ---
+    'charlotte': 'NC', 'raleigh': 'NC', 'durham': 'NC', 'greensboro': 'NC',
+    # --- MI ---
+    'detroit': 'MI', 'grand rapids': 'MI', 'ann arbor': 'MI', 'lansing': 'MI',
+    # --- AZ ---
+    'phoenix': 'AZ', 'tucson': 'AZ', 'scottsdale': 'AZ', 'mesa': 'AZ',
+    # --- WA ---
+    'seattle': 'WA', 'tacoma': 'WA', 'spokane': 'WA', 'bellevue': 'WA',
+    # --- CO ---
+    'denver': 'CO', 'colorado springs': 'CO', 'boulder': 'CO',
+    # --- MN ---
+    'minneapolis': 'MN', 'st. paul': 'MN', 'duluth': 'MN',
+    # --- TN ---
+    'nashville': 'TN', 'memphis': 'TN', 'knoxville': 'TN', 'chattanooga': 'TN',
+    # --- IN ---
+    'indianapolis': 'IN', 'fort wayne': 'IN', 'south bend': 'IN',
+    # --- WI ---
+    'milwaukee': 'WI', 'green bay': 'WI',
+    # --- KY ---
+    'louisville': 'KY', 'lexington': 'KY', 'bowling green': 'KY',
+    # --- MD ---
+    'baltimore': 'MD', 'bethesda': 'MD', 'silver spring': 'MD',
+    # --- NV ---
+    'las vegas': 'NV', 'reno': 'NV', 'henderson': 'NV',
+    # --- NM ---
+    'albuquerque': 'NM', 'santa fe': 'NM', 'las cruces': 'NM',
+    # --- OK ---
+    'oklahoma city': 'OK', 'tulsa': 'OK', 'norman': 'OK',
+    # --- HI ---
+    'honolulu': 'HI', 'maui': 'HI',
+    # --- AK ---
+    'anchorage': 'AK', 'fairbanks': 'AK', 'juneau': 'AK',
+    # --- ID ---
+    'boise': 'ID', 'nampa': 'ID',
+    # --- IA ---
+    'des moines': 'IA', 'cedar rapids': 'IA', 'iowa city': 'IA',
+    # --- KS ---
+    'wichita': 'KS', 'topeka': 'KS', 'overland park': 'KS',
+    # --- LA ---
+    'new orleans': 'LA', 'baton rouge': 'LA', 'shreveport': 'LA',
+    # --- MO ---
+    'st. louis': 'MO', 'st louis': 'MO',
+    # --- MS ---
+    'biloxi': 'MS', 'gulfport': 'MS',
+    # --- MT ---
+    'billings': 'MT', 'missoula': 'MT', 'great falls': 'MT', 'helena': 'MT',
+    # --- NE ---
+    'omaha': 'NE',
+    # --- NH ---
+    'nashua': 'NH',
+    # --- OR ---
+    'eugene': 'OR', 'bend': 'OR', 'medford': 'OR',
+    # --- RI ---
+    'providence': 'RI', 'warwick': 'RI', 'cranston': 'RI',
+    # --- SC ---
+    'myrtle beach': 'SC',
+    # --- SD ---
+    'sioux falls': 'SD', 'rapid city': 'SD',
+    # --- UT ---
+    'salt lake city': 'UT', 'provo': 'UT', 'ogden': 'UT',
+    # --- VT ---
+    'burlington': 'VT', 'montpelier': 'VT',
+    # --- VA ---
+    'richmond': 'VA', 'norfolk': 'VA', 'virginia beach': 'VA',
+    # --- WV ---
+    'huntington': 'WV', 'morgantown': 'WV',
+    # --- AR ---
+    'little rock': 'AR', 'fort smith': 'AR',
+    # --- CT ---
+    'hartford': 'CT', 'new haven': 'CT', 'stamford': 'CT', 'bridgeport': 'CT',
+    # --- ND ---
+    'fargo': 'ND', 'bismarck': 'ND', 'grand forks': 'ND',
+    # --- WY ---
+    'cheyenne': 'WY', 'casper': 'WY', 'laramie': 'WY',
+    # --- DC ---
+    'washington, d.c.': 'DC', 'washington dc': 'DC', 'washington, dc': 'DC',
+    # --- AMBIGUOUS CITIES (exist in multiple states) ---
+    'portland': None, 'springfield': None, 'kansas city': None, 'columbia': None,
+    'aurora': None, 'arlington': None, 'charleston': None, 'rochester': None,
+    'wilmington': None, 'jackson': None, 'lincoln': None, 'madison': None,
+    'concord': None, 'dover': None, 'salem': None, 'greenville': None,
+    'fayetteville': None,
+}
+
+
+def validate_extracted_state(parsed_state, note_text):
+    """
+    Validate Claude's state extraction against the actual note text.
+    Returns: (validated_state_or_None, log_message_or_None)
+    """
+    if not parsed_state:
+        return None, None
+    
+    state_code = str(parsed_state).upper().strip()
+    
+    if state_code not in STATE_FULL_NAMES:
+        return None, f"Invalid state code: {parsed_state}"
+    
+    note_lower = note_text.lower()
+    
+    # CHECK 1: Full state name (with Washington DC special case)
+    full_name = STATE_FULL_NAMES[state_code]
+    
+    if state_code == 'WA' and 'washington' in note_lower:
+        if any(dc_hint in note_lower for dc_hint in ['d.c.', ' dc', 'district of columbia']):
+            return None, f"Cleared state: Washington appears to be DC, not WA"
+        return state_code, None
+    
+    if state_code == 'DC':
+        if any(dc in note_lower for dc in ['washington, d.c.', 'washington dc', 'washington, dc', 'district of columbia']):
+            return state_code, None
+    
+    if full_name in note_lower:
+        return state_code, None
+    
+    # CHECK 2: Abbreviation pattern (safe regex)
+    abbrev_lower = state_code.lower()
+    
+    if state_code not in AMBIGUOUS_ABBREVIATIONS:
+        safe_patterns = [
+            rf'[\s,\.]{abbrev_lower}[\s,\.\d]',
+            rf'[\s,\.]{abbrev_lower}$',
+        ]
+        for pattern in safe_patterns:
+            if re.search(pattern, note_lower):
+                return state_code, None
+    else:
+        if state_code == 'MD':
+            md_credential = re.search(r'(?:dr\.?|[a-z]{2,})\s*,?\s*md\b', note_lower)
+            md_location = re.search(r'(?:lives?|resides?|from|in)\s+.*\bmd\b', note_lower)
+            if md_credential and not md_location:
+                pass
+            else:
+                strict_patterns = [
+                    rf',\s*{abbrev_lower}\s*[.\s\d]',
+                    rf',\s*{abbrev_lower}$',
+                    rf'lives?\s+in\s+[\w\s,]+\b{abbrev_lower}\b',
+                    rf'resides?\s+in\s+[\w\s,]+\b{abbrev_lower}\b',
+                    rf'from\s+[\w\s,]+\b{abbrev_lower}\b',
+                    rf'\b{abbrev_lower}\s+\d{{5}}\b',
+                ]
+                for pattern in strict_patterns:
+                    if re.search(pattern, note_lower):
+                        return state_code, None
+        else:
+            strict_patterns = [
+                rf',\s*{abbrev_lower}\s*[.\s\d]',
+                rf',\s*{abbrev_lower}$',
+                rf'lives?\s+in\s+[\w\s,]+\b{abbrev_lower}\b',
+                rf'resides?\s+in\s+[\w\s,]+\b{abbrev_lower}\b',
+                rf'from\s+[\w\s,]+\b{abbrev_lower}\b',
+                rf'\b{abbrev_lower}\s+\d{{5}}\b',
+            ]
+            for pattern in strict_patterns:
+                if re.search(pattern, note_lower):
+                    return state_code, None
+    
+    # CHECK 3: City name lookup
+    sorted_cities = sorted(CITY_TO_STATE.keys(), key=len, reverse=True)
+    
+    for city in sorted_cities:
+        if city in note_lower:
+            mapped_state = CITY_TO_STATE[city]
+            
+            if mapped_state is None:
+                return state_code, None
+            
+            if mapped_state == state_code:
+                return state_code, None
+            else:
+                return mapped_state, f"Corrected state: Claude said {state_code} but city '{city}' maps to {mapped_state}"
+    
+    # CHECK 4: No geographic signal found — likely hallucination
+    return None, f"Cleared hallucinated state: {parsed_state} (no geographic signal in note)"
+
+
+def validate_extracted_age(parsed_age, note_text):
+    """
+    Validate Claude's age extraction against the actual note text.
+    Returns: (validated_age_or_None, log_message_or_None)
+    """
+    if parsed_age is None:
+        return None, None
+    
+    note_lower = note_text.lower()
+    
+    age_patterns = [
+        r'\b\d{1,3}[\s\-]*(?:year|yr|y/?o|years?\s*old)\b',
+        r'\b(?:age|aged)\s*\d{1,3}\b',
+        r'\b\d{1,3}[\s\-]*(?:yo|y\.o\.)\b',
+        r'\b\d{1,3}\s*(?:f|m)\b',
+        r'\b(?:f|m)\s*\d{1,3}\b',
+    ]
+    
+    age_found = any(re.search(pattern, note_lower) for pattern in age_patterns)
+    
+    if age_found:
+        return parsed_age, None
+    else:
+        return None, f"Cleared hallucinated age: {parsed_age}"
+
+
+def validate_parsed_data(parsed, note_text):
+    """
+    Unified post-processing validator for parse_clinical_note output.
+    Catches hallucinated states and ages by verifying against the original note.
+    """
+    validation_log = []
+    
+    # Validate STATE
+    validated_state, state_msg = validate_extracted_state(parsed.get('state'), note_text)
+    if parsed.get('state') and validated_state != str(parsed['state']).upper():
+        if state_msg:
+            validation_log.append(state_msg)
+    parsed['state'] = validated_state
+    
+    # Validate AGE
+    validated_age, age_msg = validate_extracted_age(parsed.get('age'), note_text)
+    if parsed.get('age') and validated_age is None:
+        if age_msg:
+            validation_log.append(age_msg)
+    parsed['age'] = validated_age
+    
+    # Store log
+    parsed['_validation_log'] = validation_log
+    
+    return parsed
+
+
 # Clinical note parser
 def parse_clinical_note(note_text, db_a, db_b):
     """Parse clinical note using Claude API to extract structured data"""
@@ -2957,53 +3240,7 @@ Return ONLY the JSON object. Use null for ANY field where information is not exp
                     parsed['payer'] = exact_match
             
             # POST-PROCESSING: Validate extracted values against original note
-            # This catches AI hallucinations by checking if values actually appear in the note
-            note_lower = note_text.lower()
-            validation_log = []
-            
-            # Validate STATE - must have state name, abbreviation, or city mentioned
-            if parsed.get('state'):
-                state_code = str(parsed['state']).upper()
-                # Map of state codes to names and major cities
-                state_indicators = {
-                    'PA': ['pennsylvania', 'philadelphia', 'pittsburgh', 'harrisburg', ' pa ', ' pa.'],
-                    'NY': ['new york', 'manhattan', 'brooklyn', 'buffalo', ' ny ', ' ny.'],
-                    'CA': ['california', 'los angeles', 'san francisco', 'san diego', ' ca ', ' ca.'],
-                    'TX': ['texas', 'houston', 'dallas', 'austin', 'san antonio', ' tx ', ' tx.'],
-                    'FL': ['florida', 'miami', 'orlando', 'tampa', 'jacksonville', ' fl ', ' fl.'],
-                    'IL': ['illinois', 'chicago', ' il ', ' il.'],
-                    'OH': ['ohio', 'cleveland', 'columbus', 'cincinnati', ' oh ', ' oh.'],
-                    'NJ': ['new jersey', 'newark', 'jersey city', ' nj ', ' nj.'],
-                    'MA': ['massachusetts', 'boston', ' ma ', ' ma.'],
-                    'GA': ['georgia', 'atlanta', ' ga ', ' ga.'],
-                    'NC': ['north carolina', 'charlotte', 'raleigh', ' nc ', ' nc.'],
-                    'MI': ['michigan', 'detroit', ' mi ', ' mi.'],
-                    'AZ': ['arizona', 'phoenix', 'tucson', ' az ', ' az.'],
-                    'WA': ['washington state', 'seattle', ' wa ', ' wa.'],
-                    'CO': ['colorado', 'denver', ' co ', ' co.'],
-                }
-                # Check if ANY indicator for this state appears in the note
-                indicators = state_indicators.get(state_code, [state_code.lower()])
-                state_found = any(ind in note_lower for ind in indicators)
-                if not state_found:
-                    validation_log.append(f"Cleared hallucinated state: {parsed['state']}")
-                    parsed['state'] = None  # Clear hallucinated state
-            
-            # Validate AGE - must have a number followed by age-related words
-            if parsed.get('age'):
-                import re
-                age_patterns = [
-                    r'\b\d{1,3}\s*(?:year|yr|y/?o|years?\s*old)\b',
-                    r'\b(?:age|aged)\s*\d{1,3}\b',
-                    r'\b\d{1,3}\s*(?:yo|y\.o\.)\b',
-                ]
-                age_found = any(re.search(pattern, note_lower) for pattern in age_patterns)
-                if not age_found:
-                    validation_log.append(f"Cleared hallucinated age: {parsed['age']}")
-                    parsed['age'] = None  # Clear hallucinated age
-            
-            # Store validation log for display
-            parsed['_validation_log'] = validation_log
+            parsed = validate_parsed_data(parsed, note_text)
             
             return parsed
         except:
@@ -3012,49 +3249,7 @@ Return ONLY the JSON object. Use null for ANY field where information is not exp
             json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
             if json_match:
                 parsed = json.loads(json_match.group())
-                # ALSO validate this fallback path - same logic as above
-                note_lower = note_text.lower()
-                validation_log = []
-                
-                # Validate STATE
-                if parsed.get('state'):
-                    state_code = parsed['state'].upper()
-                    state_indicators = {
-                        'PA': ['pennsylvania', 'philadelphia', 'pittsburgh', 'harrisburg', ' pa ', ' pa.'],
-                        'NY': ['new york', 'manhattan', 'brooklyn', 'buffalo', ' ny ', ' ny.'],
-                        'CA': ['california', 'los angeles', 'san francisco', 'san diego', ' ca ', ' ca.'],
-                        'TX': ['texas', 'houston', 'dallas', 'austin', 'san antonio', ' tx ', ' tx.'],
-                        'FL': ['florida', 'miami', 'orlando', 'tampa', 'jacksonville', ' fl ', ' fl.'],
-                        'IL': ['illinois', 'chicago', ' il ', ' il.'],
-                        'OH': ['ohio', 'cleveland', 'columbus', 'cincinnati', ' oh ', ' oh.'],
-                        'NJ': ['new jersey', 'newark', 'jersey city', ' nj ', ' nj.'],
-                        'MA': ['massachusetts', 'boston', ' ma ', ' ma.'],
-                        'GA': ['georgia', 'atlanta', ' ga ', ' ga.'],
-                        'NC': ['north carolina', 'charlotte', 'raleigh', ' nc ', ' nc.'],
-                        'MI': ['michigan', 'detroit', ' mi ', ' mi.'],
-                        'AZ': ['arizona', 'phoenix', 'tucson', ' az ', ' az.'],
-                        'WA': ['washington state', 'seattle', ' wa ', ' wa.'],
-                        'CO': ['colorado', 'denver', ' co ', ' co.'],
-                    }
-                    indicators = state_indicators.get(state_code, [state_code.lower()])
-                    state_found = any(ind in note_lower for ind in indicators)
-                    if not state_found:
-                        validation_log.append(f"Removed hallucinated state: {parsed['state']}")
-                        parsed['state'] = None
-                
-                # Validate AGE
-                if parsed.get('age'):
-                    age_patterns = [
-                        r'\b\d{1,3}\s*(?:year|yr|y/?o|years?\s*old)\b',
-                        r'\b(?:age|aged)\s*\d{1,3}\b',
-                        r'\b\d{1,3}\s*(?:yo|y\.o\.)\b',
-                    ]
-                    age_found = any(re.search(pattern, note_lower) for pattern in age_patterns)
-                    if not age_found:
-                        validation_log.append(f"Removed hallucinated age: {parsed['age']}")
-                        parsed['age'] = None
-                
-                parsed['_validation_log'] = validation_log
+                parsed = validate_parsed_data(parsed, note_text)
                 return parsed
             else:
                 st.error("Failed to parse API response")
