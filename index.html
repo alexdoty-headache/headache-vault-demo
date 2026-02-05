@@ -457,6 +457,151 @@
             opacity: 0.7;
         }
 
+        .pilot-signup {
+            padding: 5rem 4rem;
+            background: linear-gradient(180deg, var(--gray-100) 0%, var(--white) 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .pilot-signup::before {
+            content: '';
+            position: absolute;
+            top: -30%;
+            left: -10%;
+            width: 60%;
+            height: 140%;
+            background: radial-gradient(ellipse, rgba(168, 139, 212, 0.15) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .pilot-container {
+            max-width: 800px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        .pilot-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .pilot-question {
+            font-family: var(--font-heading);
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--gray-600);
+            margin-bottom: 1rem;
+            font-style: italic;
+        }
+
+        .pilot-headline {
+            font-family: var(--font-heading);
+            font-size: clamp(2rem, 4vw, 2.75rem);
+            font-weight: 800;
+            line-height: 1.2;
+            color: var(--purple-deep);
+            margin-bottom: 1.5rem;
+        }
+
+        .pilot-headline span {
+            background: linear-gradient(135deg, var(--purple-primary), var(--purple-mid));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .pilot-story {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            border-left: 4px solid var(--purple-primary);
+            margin-bottom: 2.5rem;
+            box-shadow: 0 2px 10px rgba(45, 27, 78, 0.08);
+        }
+
+        .pilot-story p {
+            color: var(--gray-600);
+            line-height: 1.7;
+            margin-bottom: 1rem;
+        }
+
+        .pilot-story p:last-child {
+            margin-bottom: 0;
+        }
+
+        .pilot-story strong {
+            color: var(--purple-primary);
+            font-weight: 600;
+        }
+
+        .pilot-features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .pilot-feature {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+
+        .pilot-feature-icon {
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .pilot-feature-text {
+            flex: 1;
+        }
+
+        .pilot-feature-text strong {
+            display: block;
+            color: var(--purple-deep);
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .pilot-feature-text span {
+            color: var(--gray-600);
+            font-size: 0.95rem;
+        }
+
+        .pilot-cta-box {
+            background: linear-gradient(135deg, var(--purple-deep), var(--purple-primary));
+            padding: 2.5rem;
+            border-radius: 12px;
+            text-align: center;
+            color: white;
+        }
+
+        .pilot-cta-box h3 {
+            font-family: var(--font-heading);
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .pilot-cta-box p {
+            opacity: 0.9;
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+        }
+
+        .pilot-cta-box .btn-white {
+            font-size: 1.1rem;
+            padding: 1rem 2.5rem;
+        }
+
+        .pilot-commitment {
+            margin-top: 1rem;
+            font-size: 0.85rem;
+            opacity: 0.8;
+        }
+
         footer {
             padding: 3rem 4rem;
             background: var(--white);
@@ -495,8 +640,12 @@
             nav a:not(.btn) { display: none; }
             .hero { padding: 7rem 1.5rem 3rem; }
             .stats { grid-template-columns: 1fr; padding: 2rem 1.5rem; }
-            .features, .demo-cta, .map-section, .pricing { padding: 3rem 1.5rem; }
+            .features, .demo-cta, .map-section, .pricing, .pilot-signup { padding: 3rem 1.5rem; }
             .map-container iframe { height: 400px; }
+            .pilot-question { font-size: 1.1rem; }
+            .pilot-headline { font-size: 1.75rem; }
+            .pilot-features { grid-template-columns: 1fr; }
+            .pilot-cta-box { padding: 2rem 1.5rem; }
         }
     </style>
 </head>
@@ -622,6 +771,61 @@
             </div>
         </section>
 
+        <section class="pilot-signup">
+            <div class="pilot-container">
+                <div class="pilot-header">
+                    <p class="pilot-question">How many headache days have you had in the last three months? Uhhhhhhh...</p>
+                    <h2 class="pilot-headline">What if keeping a headache diary was as simple as <span>answering a text every Sunday?</span></h2>
+                </div>
+
+                <div class="pilot-story">
+                    <p><strong>I need patients to volunteer for a pilot of the new Headache Vault Diary.</strong></p>
+                    <p>For 30 years, I've been keeping a headache diary with mixed results. Paper journals I'd lose. Apps I'd forget to open. Doctor visits where I'd desperately try to remember three months of headaches.</p>
+                    <p>I wanted to design something better—something that works for me <em>and</em> my doctor. So I built it: <strong>a weekly text message that takes 30 seconds to answer.</strong></p>
+                </div>
+
+                <div class="pilot-features">
+                    <div class="pilot-feature">
+                        <div class="pilot-feature-icon">📱</div>
+                        <div class="pilot-feature-text">
+                            <strong>Weekly SMS check-in</strong>
+                            <span>Answer 3 questions via text. No app to download.</span>
+                        </div>
+                    </div>
+                    <div class="pilot-feature">
+                        <div class="pilot-feature-icon">⏱️</div>
+                        <div class="pilot-feature-text">
+                            <strong>30 seconds per week</strong>
+                            <span>Less time than brewing coffee.</span>
+                        </div>
+                    </div>
+                    <div class="pilot-feature">
+                        <div class="pilot-feature-icon">📊</div>
+                        <div class="pilot-feature-text">
+                            <strong>Monthly reports</strong>
+                            <span>Your patterns visualized for your doctor.</span>
+                        </div>
+                    </div>
+                    <div class="pilot-feature">
+                        <div class="pilot-feature-icon">🆓</div>
+                        <div class="pilot-feature-text">
+                            <strong>Completely free</strong>
+                            <span>4-week pilot. Help shape the product.</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pilot-cta-box">
+                    <h3>Join the Headache Vault Diary Pilot</h3>
+                    <p>Help test a new approach to headache tracking. 4 weeks, weekly text messages, your feedback shapes the product.</p>
+                    <a href="https://forms.gle/YOUR_GOOGLE_FORM_ID" class="btn btn-white" target="_blank">
+                        📱 Sign Up for Pilot (2 min)
+                    </a>
+                    <p class="pilot-commitment">4-week commitment • 15 participants • Closes when full</p>
+                </div>
+            </div>
+        </section>
+
         <section class="demo-cta" id="demo">
             <h2>Try the PA Engine Beta</h2>
             <p>Upload a clinical note, select a payer and medication, and generate a complete prior authorization in minutes.</p>
@@ -635,9 +839,4 @@
     <footer>
         <p class="footer-tagline">"The Headache Vault equips practitioners with data-driven tools to bypass administrative barriers because a headache disorder patient's ZIP code should not determine their time to treatment."</p>
         <div class="footer-contact">
-            <p><strong>Contact:</strong> Alex Doty · <a href="mailto:alex.doty@headachevault.com">alex.doty@headachevault.com</a></p>
-        </div>
-        <p class="footer-copy">© 2026 The Headache Vault. Built with ❤️ by a migraine patient.</p>
-    </footer>
-</body>
-</html>
+            <p><strong>Contact:</strong> Alex Doty · <a href="/cdn-cgi/l/email-protection#76171a130e581219020f361e13171217151e130017031a025815191b"><span class="__cf_email__" data-cfemail="0a6b666f72246e657e734a626f6b6e6b69626f7c6b7f667e24696567">[email&#160;protected]</span></a></p
