@@ -4107,7 +4107,7 @@ Step Therapy: REQUIRED ({step_req}, {step_dur})
         Use the <strong>State</strong> dropdown in the sidebar to find policies specific to your patient's insurance.
     </div>
     <div style="color: #3B82F6; font-size: 0.95rem;">
-        💡 Our database covers <strong>866 policies</strong> across <strong>50 states</strong> for all major payers.
+        💡 Our database covers <strong>915 policies</strong> across <strong>50 states</strong> for all major payers.
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -4128,7 +4128,7 @@ Step Therapy: REQUIRED ({step_req}, {step_dur})
             # ================================================================
             # CLINICAL GUARDRAIL: Botox requires chronic migraine
             # ================================================================
-            is_neurotoxin_search = selected_drug and 'neurotoxin' in selected_drug.lower()
+            is_neurotoxin_search = selected_drug and ('neurotoxin' in selected_drug.lower() or 'botox' in selected_drug.lower())
             is_episodic = headache_type == "Episodic Migraine"
             botox_warning_shown = False
             
@@ -4184,12 +4184,14 @@ Step Therapy: REQUIRED ({step_req}, {step_dur})
         # Show fallback notice if applicable
         if st.session_state.get('fallback_used', False):
             fallback_msg = st.session_state.get('fallback_message', '')
+            matched_payer = st.session_state.get('matched_payer', None)
             if len(results) > 0 and fallback_msg:
                 # We found results via fallback — show informational notice, not an error
                 st.info(fallback_msg)
-            elif len(results) == 0:
-                # Fallback was attempted but still no results — show payer not found error
-                show_error("payer_not_found", payer=st.session_state.get('matched_payer', selected_payer if selected_payer != 'All Payers' else 'this payer'))
+            elif len(results) == 0 and matched_payer:
+                # Fallback was attempted for a SPECIFIC payer but still no results
+                show_error("payer_not_found", payer=matched_payer)
+            # Note: If matched_payer is None (All Payers), skip payer_not_found error
         
         if len(results) == 0:
             # Check if this is a Botox + episodic situation (common user error)
@@ -4667,6 +4669,38 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
         with col3:
             if parsed.get('drug_class'):
                 st.metric("Medication", parsed['drug_class'])
+        
+        # ================================================================
+        # CLINICAL GUARDRAIL: Botox + Episodic warning at extraction stage
+        # ================================================================
+        extracted_drug = parsed.get('drug_class', '').lower()
+        extracted_diagnosis = parsed.get('diagnosis', '').lower()
+        is_botox_extracted = 'botox' in extracted_drug or 'neurotoxin' in extracted_drug
+        is_episodic_extracted = 'episodic' in extracted_diagnosis
+        
+        if is_botox_extracted and is_episodic_extracted:
+            st.markdown("""
+<div style="background: #FFF3CD; border: 2px solid #FFC107; border-radius: 12px; padding: 1.25rem; margin: 1rem 0;">
+    <div style="font-weight: 700; color: #856404; font-size: 1.1rem; margin-bottom: 0.5rem;">
+        ⚠️ Clinical Alert: Botox Not Indicated for Episodic Migraine
+    </div>
+    <div style="color: #856404;">
+        Botox (onabotulinumtoxinA) is <strong>only FDA-approved for chronic migraine</strong> (≥15 headache days/month for ≥3 months).
+        This patient's note indicates <strong>episodic migraine</strong>.
+    </div>
+    <div style="color: #856404; margin-top: 0.75rem;">
+        <strong>Consider instead:</strong>
+        <ul style="margin: 0.5rem 0 0 1rem; padding: 0;">
+            <li><strong>CGRP mAbs</strong> — Aimovig, Ajovy, Emgality (preventive, FDA-approved for episodic + chronic)</li>
+            <li><strong>Gepants (Preventive)</strong> — Qulipta, Nurtec ODT EOD (oral preventive option)</li>
+            <li><strong>Gepants (Acute)</strong> — Nurtec ODT, Ubrelvy (as-needed treatment)</li>
+        </ul>
+    </div>
+    <div style="color: #6B5A00; font-size: 0.85rem; margin-top: 0.75rem; font-style: italic;">
+        💡 If this patient actually has ≥15 headache days/month, edit the diagnosis above or clarify in the clinical note.
+    </div>
+</div>
+""", unsafe_allow_html=True)
         
         # Payer info with copy button
         if parsed.get('payer'):
