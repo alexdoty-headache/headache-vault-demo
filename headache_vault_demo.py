@@ -3943,6 +3943,7 @@ Step Therapy: REQUIRED ({step_req}, {step_dur})
             
             st.session_state.search_results = query
             st.session_state.patient_age = patient_age
+            st.session_state.matched_payer = selected_payer if selected_payer != 'All Payers' else None
             st.session_state.fallback_used = fallback_used
             st.session_state.fallback_message = fallback_message
             st.session_state.show_pa_text = False
@@ -3982,6 +3983,16 @@ Step Therapy: REQUIRED ({step_req}, {step_dur})
                 st.metric("Require Step Therapy", f"{requires_step}/{len(results)}")
             
             # Display each policy as a professional card
+            # Sort: matched payer first, then alphabetical
+            matched_payer = st.session_state.get('matched_payer')
+            if matched_payer and 'Payer_Name' in results.columns:
+                mp_lower = matched_payer.lower()
+                results = results.copy()
+                results['_payer_match'] = results['Payer_Name'].apply(
+                    lambda p: 0 if (mp_lower in p.lower() or p.lower() in mp_lower) else 1
+                )
+                results = results.sort_values('_payer_match').drop(columns=['_payer_match'])
+            
             for idx, row in results.iterrows():
                 # Build policy card with container
                 st.markdown(f"""
@@ -4556,6 +4567,7 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
                 
                 st.session_state.search_results = query
                 st.session_state.patient_age = parsed.get('age') if parsed.get('age') else None  # Don't default to 35
+                st.session_state.matched_payer = parsed.get('payer')
                 st.session_state.fallback_used = fallback_used
                 st.session_state.fallback_message = fallback_message
                 st.session_state.show_pa_text = False  # Reset PA display on new search
