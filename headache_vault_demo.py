@@ -2588,6 +2588,26 @@ def search_policies_with_fallback(db_b, state, payer=None, drug_class=None):
                     if not fallback_message:
                         fallback_message = f"ℹ️ No {state}-specific policy for {drug_class}. Showing **national baseline** policy."
         
+        # Final fallback: if payer-specific search returned nothing,
+        # show all policies for this state + drug class (ignoring payer)
+        if len(drug_query) == 0 and payer:
+            state_all_payers = db_b[db_b['State'] == state].copy()
+            if drug_class:
+                state_all_payers = state_all_payers[state_all_payers['Drug_Class'] == drug_class]
+            if len(state_all_payers) > 0:
+                drug_query = state_all_payers
+                fallback_used = True
+                fallback_message = f"ℹ️ No specific {payer} {drug_class} policy found. Showing **all {state} payer policies** for this drug class. Verify requirements with {payer} directly."
+            else:
+                # Try national all-payers
+                national_all = db_b[db_b['State'] == 'ALL'].copy()
+                if drug_class:
+                    national_all = national_all[national_all['Drug_Class'] == drug_class]
+                if len(national_all) > 0:
+                    drug_query = national_all
+                    fallback_used = True
+                    fallback_message = f"ℹ️ No {payer} policy found for {drug_class}. Showing **national baseline policies** for reference. Verify requirements with {payer} directly."
+        
         query = drug_query
     
     return query, fallback_used, fallback_message
@@ -4061,7 +4081,7 @@ Step Therapy: REQUIRED ({step_req}, {step_dur})
     # Database coverage note
     st.sidebar.markdown("""
 <div style='color: #5A5A5A; font-size: 0.85rem; margin-top: 0.5rem; font-style: italic;'>
-    💡 Database: 752 policies across 50 states. Preventive gepant coverage expanding weekly.
+    💡 Database: 915 policies across 50 states. Coverage expanding weekly.
 </div>
 """, unsafe_allow_html=True)
 
@@ -4105,6 +4125,37 @@ Step Therapy: REQUIRED ({step_req}, {step_dur})
             score, desc = collection_state.get_search_quality_score()
             st.markdown(get_quality_indicator_html(score, desc), unsafe_allow_html=True)
             
+            # ================================================================
+            # CLINICAL GUARDRAIL: Botox requires chronic migraine
+            # ================================================================
+            is_neurotoxin_search = selected_drug and 'neurotoxin' in selected_drug.lower()
+            is_episodic = headache_type == "Episodic Migraine"
+            botox_warning_shown = False
+            
+            if is_neurotoxin_search and is_episodic:
+                st.markdown("""
+<div style="background: #FFF3CD; border: 2px solid #FFC107; border-radius: 12px; padding: 1.25rem; margin: 1rem 0;">
+    <div style="font-weight: 700; color: #856404; font-size: 1.1rem; margin-bottom: 0.5rem;">
+        ⚠️ Clinical Alert: Botox Not Indicated for Episodic Migraine
+    </div>
+    <div style="color: #856404;">
+        Botox (onabotulinumtoxinA) is <strong>only FDA-approved for chronic migraine</strong> (≥15 headache days/month for ≥3 months).
+    </div>
+    <div style="color: #856404; margin-top: 0.75rem;">
+        <strong>For episodic migraine, consider instead:</strong>
+        <ul style="margin: 0.5rem 0 0 1rem; padding: 0;">
+            <li><strong>CGRP mAbs</strong> — Aimovig, Ajovy, Emgality (preventive, FDA-approved for episodic + chronic)</li>
+            <li><strong>Gepants (Preventive)</strong> — Qulipta, Nurtec ODT EOD (oral preventive option)</li>
+            <li><strong>Gepants (Acute)</strong> — Nurtec ODT, Ubrelvy (as-needed treatment)</li>
+        </ul>
+    </div>
+    <div style="color: #6B5A00; font-size: 0.85rem; margin-top: 0.75rem; font-style: italic;">
+        💡 If this patient actually has ≥15 headache days/month, change the Headache Type filter to "Chronic Migraine" in the sidebar.
+    </div>
+</div>
+""", unsafe_allow_html=True)
+                botox_warning_shown = True
+            
             # Perform search with national fallback support
             query, fallback_used, fallback_message = search_policies_with_fallback(
                 db_b,
@@ -4124,6 +4175,7 @@ Step Therapy: REQUIRED ({step_req}, {step_dur})
             st.session_state.matched_payer = selected_payer if selected_payer != 'All Payers' else None
             st.session_state.fallback_used = fallback_used
             st.session_state.fallback_message = fallback_message
+            st.session_state.botox_warning_shown = botox_warning_shown if 'botox_warning_shown' in dir() else False
             st.session_state.show_pa_text = False
         
         results = st.session_state.search_results
@@ -4131,22 +4183,36 @@ Step Therapy: REQUIRED ({step_req}, {step_dur})
         
         # Show fallback notice if applicable
         if st.session_state.get('fallback_used', False):
-            # Extract payer name from message for error context
             fallback_msg = st.session_state.get('fallback_message', '')
-            show_error("payer_not_found", payer=st.session_state.get('selected_payer', 'this payer'))
+            if len(results) > 0 and fallback_msg:
+                # We found results via fallback — show informational notice, not an error
+                st.info(fallback_msg)
+            elif len(results) == 0:
+                # Fallback was attempted but still no results — show payer not found error
+                show_error("payer_not_found", payer=st.session_state.get('matched_payer', selected_payer if selected_payer != 'All Payers' else 'this payer'))
         
         if len(results) == 0:
-            st.warning("⚠️ No policies found for this combination.")
-            st.info("""
-            **Possible reasons:**
-            - This payer may not have a specific policy for this drug class
-            - Preventive gepant policies (Nurtec, Qulipta) are still being audited for some states
-            - Try selecting a different medication class or payer
-            
-            **Coverage notes:**
-            - All PA payers have policies for: CGRP mAbs, Botox, Gepants (acute)
-            - Preventive gepant coverage expanding weekly
-            """)
+            # Check if this is a Botox + episodic situation (common user error)
+            if st.session_state.get('botox_warning_shown', False):
+                st.warning("⚠️ No policies shown — Botox is not indicated for episodic migraine.")
+                st.info("""
+                **Recommended next steps:**
+                - Change **Medication Class** to **CGRP mAbs (SC)** for preventive options (Aimovig, Ajovy, Emgality)
+                - Or change **Headache Type** to **Chronic Migraine** if patient truly has ≥15 headache days/month
+                - Botox prior authorizations require a chronic migraine diagnosis (G43.709 or G43.719)
+                """)
+            else:
+                st.warning("⚠️ No policies found for this combination.")
+                st.info("""
+                **Possible reasons:**
+                - This payer may not have a specific policy for this drug class
+                - Preventive gepant policies (Nurtec, Qulipta) are still being audited for some states
+                - Try selecting a different medication class or payer
+                
+                **Coverage notes:**
+                - All PA payers have policies for: CGRP mAbs, Botox, Gepants (acute)
+                - Preventive gepant coverage expanding weekly
+                """)
         else:
             # Display summary
             st.markdown("---")
