@@ -2004,15 +2004,16 @@ def load_databases():
     """
     Load all Headache Vault databases from CSV files.
     
-    Database Schema:
-    - payer_registry: 717 payers with LOB codes, Vault_Payer_ID format
-    - payer_policies: 752 policies with step therapy, drug class taxonomy
-    - denial_codes: 35 denial scenarios with appeal strategies
-    - pediatric_overrides: 25 records with safety flags (valproate, topiramate)
-    - state_regulations: 50 states with Gold Card legislation details
-    - icd10_codes: 46 diagnosis codes with ICHD-3 mappings
-    - therapeutic_doses: 40 medications with ACP 2025 thresholds
-    - otc_medications: 28 OTC meds for MOH tracking
+    Database Schema (v3.0 — 8,852 records):
+    - payer_registry: 1,154 payers with LOB codes, Vault_Payer_ID format
+    - payer_policies: 915 policies with step therapy, drug class taxonomy
+    - formulary_tier_map: 6,549 drug-level formulary status by payer
+    - denial_codes: 42 denial scenarios with appeal strategies
+    - pediatric_overrides: 24 records with safety flags (valproate, topiramate)
+    - state_regulations: 51 states with Gold Card legislation details
+    - icd10_codes: 47 diagnosis codes with ICHD-3 mappings
+    - therapeutic_doses: 41 medications with ACP 2025 thresholds
+    - otc_medications: 29 OTC meds for MOH tracking
     """
     payer_registry = pd.read_csv('Payer_Registry.csv')
     payer_policies = pd.read_csv('Payer_Policies.csv')
@@ -2023,7 +2024,17 @@ def load_databases():
     therapeutic_doses = pd.read_csv('Therapeutic_Doses.csv')
     otc_medications = pd.read_csv('OTC_Medications.csv')
     
-    return payer_registry, payer_policies, denial_codes, pediatric_overrides, state_regulations, icd10_codes, therapeutic_doses, otc_medications
+    # Formulary Tier Map — drug-level coverage details per payer (v3.0)
+    try:
+        formulary_tier_map = pd.read_csv('Formulary_Tier_Map.csv')
+    except FileNotFoundError:
+        formulary_tier_map = pd.DataFrame(columns=[
+            'Vault_Payer_ID', 'State', 'Payer_Name', 'Drug_Name', 'Drug_Class',
+            'Formulary_Status', 'Tier', 'Quantity_Limit', 'Step_Within_Class',
+            'Site_of_Care', 'PBM_Partner', 'Year', 'Confidence', 'Source', 'Notes'
+        ])
+    
+    return payer_registry, payer_policies, formulary_tier_map, denial_codes, pediatric_overrides, state_regulations, icd10_codes, therapeutic_doses, otc_medications
 
 # ============================================================================
 # HELPER: Get step therapy details with column name fallback
@@ -2582,6 +2593,116 @@ def search_policies_with_fallback(db_b, state, payer=None, drug_class=None):
     return query, fallback_used, fallback_message
 
 
+# ============================================================================
+# FORMULARY TIER MAP — Helper Functions (v3.0)
+# ============================================================================
+
+# Map common drug name variations to canonical Drug_Name in Formulary_Tier_Map
+DRUG_NAME_MAP = {
+    'aimovig': 'Aimovig', 'erenumab': 'Aimovig',
+    'emgality': 'Emgality', 'galcanezumab': 'Emgality',
+    'ajovy': 'Ajovy', 'fremanezumab': 'Ajovy',
+    'vyepti': 'Vyepti', 'eptinezumab': 'Vyepti',
+    'nurtec': 'Nurtec ODT', 'nurtec odt': 'Nurtec ODT', 'rimegepant': 'Nurtec ODT',
+    'ubrelvy': 'Ubrelvy', 'ubrogepant': 'Ubrelvy',
+    'qulipta': 'Qulipta', 'atogepant': 'Qulipta',
+    'botox': 'Botox', 'onabotulinumtoxina': 'Botox',
+    'zavzpret': 'Zavzpret', 'zavegepant': 'Zavzpret',
+}
+
+def extract_selected_drug_name(parsed_data: dict) -> str:
+    """Extract canonical drug name from parsed clinical note or sidebar selection."""
+    if not parsed_data:
+        return ""
+    # Check common fields for drug mentions
+    for field in ['drug', 'medication', 'drug_class', 'requested_medication']:
+        val = parsed_data.get(field, '')
+        if val:
+            for keyword, canonical in DRUG_NAME_MAP.items():
+                if keyword in str(val).lower():
+                    return canonical
+    return ""
+
+def lookup_formulary_for_policy(formulary_df, vault_payer_id: str, drug_class: str):
+    """
+    Look up formulary tier data for a specific payer + drug class.
+    Returns a DataFrame of drugs with their formulary status, sorted Preferred-first.
+    """
+    if formulary_df is None or formulary_df.empty:
+        return pd.DataFrame()
+    mask = (
+        (formulary_df['Vault_Payer_ID'] == vault_payer_id) &
+        (formulary_df['Drug_Class'] == drug_class)
+    )
+    tier_data = formulary_df[mask].copy()
+    if tier_data.empty:
+        return tier_data
+    # Sort: Preferred first, then Non-Preferred, then Restricted, then Excluded
+    status_order = {'Preferred': 0, 'Non-Preferred': 1, 'Restricted': 2, 'Excluded': 3}
+    tier_data['_sort'] = tier_data['Formulary_Status'].map(status_order).fillna(4)
+    tier_data = tier_data.sort_values('_sort').drop(columns=['_sort'])
+    return tier_data
+
+def get_formulary_status_badge(status: str) -> str:
+    """Return color-coded HTML badge for formulary status."""
+    colors = {
+        'Preferred': ('#059669', '#D1FAE5', '✅'),
+        'Non-Preferred': ('#D97706', '#FEF3C7', '⚠️'),
+        'Restricted': ('#DC2626', '#FEE2E2', '🔴'),
+        'Excluded': ('#991B1B', '#FEE2E2', '❌'),
+    }
+    color, bg, icon = colors.get(status, ('#6B7280', '#F3F4F6', '❓'))
+    return f'<span style="background:{bg};color:{color};padding:2px 8px;border-radius:4px;font-size:0.85em;font-weight:600;">{icon} {status}</span>'
+
+def get_confidence_disclaimer(tier_data) -> str:
+    """Return disclaimer HTML if any rows have low-confidence data."""
+    if tier_data.empty:
+        return ""
+    low_conf = tier_data[tier_data['Confidence'].isin(['PBM-Inferred', 'Gap-Manual-Review'])]
+    if not low_conf.empty:
+        return '<div style="background:#FEF3C7;border:1px solid #F59E0B;border-radius:6px;padding:8px 12px;margin-top:8px;font-size:0.82em;">⚠️ <strong>Note:</strong> Some formulary data is estimated. Verify with the payer before submission.</div>'
+    return ""
+
+def get_preferred_drug_suggestion(tier_data, selected_drug: str) -> str:
+    """If selected drug is Non-Preferred, suggest a Preferred alternative."""
+    if tier_data.empty or not selected_drug:
+        return ""
+    sel_rows = tier_data[tier_data['Drug_Name'] == selected_drug]
+    if sel_rows.empty:
+        return ""
+    sel_status = sel_rows.iloc[0].get('Formulary_Status', '')
+    if sel_status in ('Non-Preferred', 'Restricted', 'Excluded'):
+        preferred = tier_data[tier_data['Formulary_Status'] == 'Preferred']
+        if not preferred.empty:
+            alt = preferred.iloc[0]['Drug_Name']
+            alt_tier = preferred.iloc[0].get('Tier', '')
+            return f'<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:6px;padding:8px 12px;margin-top:8px;font-size:0.85em;">💡 <strong>{alt}</strong> is Preferred{f" ({alt_tier})" if alt_tier else ""} on this formulary. Switching may avoid additional PA barriers.</div>'
+    return ""
+
+def build_formulary_html_table(tier_data, selected_drug: str = "") -> str:
+    """Build an HTML mini-table showing drug-level formulary details."""
+    if tier_data.empty:
+        return '<div style="color:#6B7280;font-size:0.85em;padding:4px 0;">No formulary data available for this payer/drug class.</div>'
+    rows_html = ""
+    for _, r in tier_data.iterrows():
+        drug = r.get('Drug_Name', '?')
+        status = r.get('Formulary_Status', '?')
+        tier = r.get('Tier', '—')
+        step = r.get('Step_Within_Class', '—')
+        ql = r.get('Quantity_Limit', '—')
+        # Clean NaN values
+        tier = tier if pd.notna(tier) and str(tier).strip() else '—'
+        step = step if pd.notna(step) and str(step).strip() else '—'
+        ql = ql if pd.notna(ql) and str(ql).strip() else '—'
+        badge = get_formulary_status_badge(status)
+        highlight = ' style="background:#EFF6FF;"' if drug == selected_drug else ''
+        rows_html += f'<tr{highlight}><td style="padding:4px 8px;font-weight:{"700" if drug == selected_drug else "400"}">{drug}</td><td style="padding:4px 8px;">{badge}</td><td style="padding:4px 8px;font-size:0.85em;">{tier}</td><td style="padding:4px 8px;font-size:0.85em;">{step}</td><td style="padding:4px 8px;font-size:0.85em;">{ql}</td></tr>'
+    return f'''<table style="width:100%;border-collapse:collapse;font-size:0.9em;margin-top:6px;">
+<thead><tr style="border-bottom:2px solid #E5E7EB;text-align:left;">
+<th style="padding:4px 8px;">Drug</th><th style="padding:4px 8px;">Status</th><th style="padding:4px 8px;">Tier</th><th style="padding:4px 8px;">Within-Class Step</th><th style="padding:4px 8px;">Quantity Limit</th>
+</tr></thead><tbody>{rows_html}</tbody></table>'''
+
+
 def send_lead_to_monday(name, email, practice, state, payer, drug_class, notes):
     """Send lead data to Monday.com CRM board"""
 
@@ -2763,7 +2884,13 @@ if 'email_captures' not in st.session_state:
 
 # Load data
 # Unpack databases with descriptive names
-payer_registry, payer_policies, denial_codes, pediatric_overrides, state_regulations, icd10_codes, therapeutic_doses, otc_medications = load_databases()
+payer_registry, payer_policies, formulary_tier_map, denial_codes, pediatric_overrides, state_regulations, icd10_codes, therapeutic_doses, otc_medications = load_databases()
+
+# Aliases matching schema doc convention
+db_a = payer_registry
+db_b = payer_policies
+db_d = formulary_tier_map
+db_c = denial_codes
 
 # Create aliases for backward compatibility during transition
 db_a = payer_registry
@@ -3625,6 +3752,34 @@ Line of Business: {row['LOB']}
 State: {state}
 
 """
+                # Inject formulary status into PCP PA letter
+                _pa_vault_id = row.get('Vault_Payer_ID', '')
+                _pa_drug_cls = row.get('Drug_Class', '')
+                _pa_sel_drug = extract_selected_drug_name(st.session_state.get('patient_context', {}) or {})
+                if _pa_vault_id and _pa_drug_cls and not formulary_tier_map.empty:
+                    _pa_tier = lookup_formulary_for_policy(formulary_tier_map, _pa_vault_id, _pa_drug_cls)
+                    if not _pa_tier.empty:
+                        pa_text += "FORMULARY STATUS\n────────────────\n"
+                        if _pa_sel_drug:
+                            _sel_rows = _pa_tier[_pa_tier['Drug_Name'] == _pa_sel_drug]
+                            if not _sel_rows.empty:
+                                _s = _sel_rows.iloc[0]
+                                _st_val = _s.get('Formulary_Status', 'Unknown')
+                                _t_val = _s.get('Tier', '—')
+                                pa_text += f"Requested Drug: {_pa_sel_drug} ({_st_val}, {_t_val})\n"
+                                if _st_val in ('Non-Preferred', 'Restricted', 'Excluded'):
+                                    _pref = _pa_tier[_pa_tier['Formulary_Status'] == 'Preferred']
+                                    if not _pref.empty:
+                                        _alt = _pref.iloc[0]
+                                        pa_text += f"Preferred Alternative: {_alt['Drug_Name']} ({_alt.get('Tier', '—')})\n"
+                                    pa_text += "\nClinical justification for non-preferred agent:\n"
+                                    pa_text += "• [Patient has failed/is intolerant to preferred agent]\n"
+                                    pa_text += "• [Specific clinical reason for this drug over preferred]\n"
+                        else:
+                            for _, _fr in _pa_tier.iterrows():
+                                pa_text += f"  {_fr.get('Drug_Name','?')}: {_fr.get('Formulary_Status','?')} ({_fr.get('Tier','—')})\n"
+                        pa_text += "\n"
+
                 if row['Step_Therapy_Required'] == 'Yes':
                     step_req = row.get('Step_1_Requirement', 'Prior oral preventive trials required')
                     step_dur = row.get('Step_1_Duration', 'Per policy requirements')
@@ -3731,6 +3886,15 @@ Age: {age}y{pediatric_note}
 Rx: {drug} ({row['Medication_Category']})
 LOB: {row['LOB']}
 """
+                # Inject compact formulary status for specialist mode
+                if _pa_vault_id and _pa_drug_cls and not formulary_tier_map.empty:
+                    _sp_tier = lookup_formulary_for_policy(formulary_tier_map, _pa_vault_id, _pa_drug_cls)
+                    if not _sp_tier.empty and _pa_sel_drug:
+                        _sp_sel = _sp_tier[_sp_tier['Drug_Name'] == _pa_sel_drug]
+                        if not _sp_sel.empty:
+                            _sp_s = _sp_sel.iloc[0]
+                            pa_text += f"Formulary: {_pa_sel_drug} → {_sp_s.get('Formulary_Status','?')} ({_sp_s.get('Tier','—')})\n"
+
                 if row['Step_Therapy_Required'] == 'Yes':
                     step_req = row.get('Step_1_Requirement', 'Prior preventive')
                     step_dur = row.get('Step_1_Duration', 'Per policy')
@@ -4019,6 +4183,20 @@ Step Therapy: REQUIRED ({step_req}, {step_dur})
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
+                
+                # ── Formulary Tier Map Section (v3.0) ──
+                vault_id = row.get('Vault_Payer_ID', '')
+                drug_cls = row.get('Drug_Class', '')
+                if vault_id and drug_cls and not formulary_tier_map.empty:
+                    tier_data = lookup_formulary_for_policy(formulary_tier_map, vault_id, drug_cls)
+                    if not tier_data.empty:
+                        # Determine selected drug from parsed note or sidebar
+                        selected_drug = extract_selected_drug_name(st.session_state.get('patient_context', {}) or {})
+                        st.markdown(f'''<div class="policy-section"><div class="policy-section-title">💊 Formulary Coverage</div>
+{build_formulary_html_table(tier_data, selected_drug)}
+{get_confidence_disclaimer(tier_data)}
+{get_preferred_drug_suggestion(tier_data, selected_drug)}
+</div>''', unsafe_allow_html=True)
                 
                 # Step Therapy Section - use native Streamlit
                 if row['Step_Therapy_Required'] == 'Yes':
