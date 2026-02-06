@@ -3136,7 +3136,8 @@ JSON format:
   "state": "two-letter state code or null if NO location mentioned",
   "payer": "insurance company name or null if NO insurance mentioned", 
   "drug_class": "medication class or null if NO specific drug requested",
-  "diagnosis": "Chronic Migraine, Episodic Migraine, or Cluster Headache based on symptoms",
+  "diagnosis": "Chronic Migraine, Episodic Migraine, or Cluster Headache — classify by FREQUENCY, not by drug requested",
+  "headache_days_per_month": integer or null if not stated,
   "age": integer age or null if NOT explicitly stated,
   "prior_medications": [
     {{
@@ -3201,6 +3202,19 @@ DRUG CLASS PRIORITY for unspecified preventive requests:
 2. "Qulipta" - If oral preferred or needle concerns mentioned
 3. "Botox" - ONLY if explicitly requested or patient has failed CGRP mAbs
 4. "Vyepti" - ONLY if explicitly requested or patient needs IV option
+
+CRITICAL - DIAGNOSIS CLASSIFICATION RULES:
+The diagnosis MUST be based on headache FREQUENCY or clinician's stated diagnosis, NEVER on the drug requested.
+- ≥15 headache days/month → "Chronic Migraine"
+- <15 headache days/month → "Episodic Migraine"  
+- Cluster symptoms (unilateral, autonomic features, short severe attacks) → "Cluster Headache"
+- If clinician explicitly writes "chronic migraine" → "Chronic Migraine" (trust the clinician)
+- If clinician explicitly writes "episodic migraine" → "Episodic Migraine"
+- DO NOT infer "Chronic Migraine" just because patient requests Botox — Botox indication is checked separately
+- DO NOT let the requested drug influence the diagnosis classification
+- Example: "10 migraine days/month, requesting Botox" → diagnosis: "Episodic Migraine", headache_days_per_month: 10
+- Example: "20 headache days/month" → diagnosis: "Chronic Migraine", headache_days_per_month: 20
+- Extract headache_days_per_month as a separate integer whenever frequency is mentioned
 
 Clinical note:
 {note_text}
@@ -4066,11 +4080,25 @@ Step Therapy: REQUIRED ({step_req}, {step_dur})
                     # Botox is ONLY for Chronic Migraine (≥15 days/month)
                     parsed_drug = st.session_state.get('parsed_data', {}).get('drug_class', '')
                     parsed_diagnosis = st.session_state.get('parsed_data', {}).get('diagnosis', '')
+                    headache_days = st.session_state.get('parsed_data', {}).get('headache_days_per_month')
                     is_botox = parsed_drug and 'botox' in str(parsed_drug).lower()
                     is_chronic = parsed_diagnosis and 'chronic' in str(parsed_diagnosis).lower()
                     
-                    if is_botox and not is_chronic:
+                    # Botox flag fires if:
+                    # 1. Frequency is stated and < 15 days/month (hard rule, overrides diagnosis label), OR
+                    # 2. Diagnosis explicitly says non-chronic and no frequency to override
+                    botox_frequency_fail = (headache_days is not None and int(headache_days) < 15)
+                    botox_diagnosis_fail = (not is_chronic and headache_days is None)
+                    
+                    if is_botox and (botox_frequency_fail or botox_diagnosis_fail):
                         show_error("botox_needs_chronic")
+                        if botox_frequency_fail:
+                            st.markdown(f"""
+                            <div style="background: #FFF3CD; padding: 0.75rem 1rem; border-radius: 8px; margin: 0.5rem 0; border-left: 4px solid #FFC107;">
+                                <span style="color: #856404; font-weight: 600;">📊 Patient reports {headache_days} headache days/month</span><br>
+                                <small style="color: #856404;">Botox requires ≥15 days/month for ≥3 months. Consider CGRP mAbs (Aimovig, Ajovy, Emgality) for episodic migraine instead.</small>
+                            </div>
+                            """, unsafe_allow_html=True)
                     
                     # ================================================================
                     # CRITERIA MET CHECKLIST - Show if patient meets requirements
