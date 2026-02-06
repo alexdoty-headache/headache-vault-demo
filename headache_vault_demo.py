@@ -4061,9 +4061,21 @@ Step Therapy: REQUIRED ({step_req}, {step_dur})
                     
 
                     # ================================================================
+                    # DRUG-DIAGNOSIS SAFETY CHECK — Before evaluating criteria
+                    # ================================================================
+                    # Botox is ONLY for Chronic Migraine (≥15 days/month)
+                    parsed_drug = st.session_state.get('parsed_data', {}).get('drug_class', '')
+                    parsed_diagnosis = st.session_state.get('parsed_data', {}).get('diagnosis', '')
+                    is_botox = parsed_drug and 'botox' in str(parsed_drug).lower()
+                    is_chronic = parsed_diagnosis and 'chronic' in str(parsed_diagnosis).lower()
+                    
+                    if is_botox and not is_chronic:
+                        show_error("botox_needs_chronic")
+                    
+                    # ================================================================
                     # CRITERIA MET CHECKLIST - Show if patient meets requirements
                     # ================================================================
-                    if 'parsed_data' in st.session_state and st.session_state.parsed_data.get('prior_medications'):
+                    elif 'parsed_data' in st.session_state and st.session_state.parsed_data.get('prior_medications'):
                         prior_meds = st.session_state.parsed_data.get('prior_medications', [])
                         diagnosis = st.session_state.parsed_data.get('diagnosis', '')
                         
@@ -4092,7 +4104,21 @@ Step Therapy: REQUIRED ({step_req}, {step_dur})
                                     """, unsafe_allow_html=True)
                             
                             if all_met:
-                                show_error("approved")
+                                # Check if medication details (dose/duration/reason) are actually filled in
+                                # If not, show a softer "classes verified" message instead of "PA Ready"
+                                has_complete_details = all(
+                                    isinstance(med, dict) and med.get('dose') and med.get('duration_weeks') and med.get('reason_stopped')
+                                    for med in prior_meds if isinstance(med, dict)
+                                )
+                                if has_complete_details:
+                                    show_error("approved")
+                                else:
+                                    st.markdown("""
+                                    <div style="background: #E8F4FD; padding: 0.75rem 1rem; border-radius: 8px; margin: 0.5rem 0; border-left: 4px solid #3B82F6;">
+                                        <span style="color: #1E40AF; font-weight: 600;">ℹ️ Required medication classes documented</span><br>
+                                        <small style="color: #1E40AF;">Fill in dose, duration, and reason stopped below to generate PA letter.</small>
+                                    </div>
+                                    """, unsafe_allow_html=True)
                             else:
                                 # Count what's missing for a more specific error
                                 unmet_requirements = [req for req, met, _ in criteria_results if not met]
