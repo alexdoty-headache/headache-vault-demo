@@ -4038,6 +4038,10 @@ Step Therapy: REQUIRED ({step_req}, {step_dur})
         disabled=state_not_selected
     )
     
+    # Sync matched_payer with current dropdown to prevent stale values from Clinical Tools extraction
+    if selected_payer == 'All Payers':
+        st.session_state.matched_payer = None
+    
     selected_drug = st.sidebar.selectbox(
         "Medication Class",
         options=state_drug_classes if state_drug_classes else ['CGRP mAbs'],
@@ -4861,7 +4865,16 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
         # Search button - conditional based on whether state is available
         state_available = parsed.get('state') is not None
         
-        if state_available:
+        # Check if Botox + Episodic (should not search — clinically invalid)
+        _ext_drug = parsed.get('drug_class', '').lower()
+        _ext_dx = parsed.get('diagnosis', '').lower()
+        _is_botox_episodic = ('botox' in _ext_drug or 'neurotoxin' in _ext_drug) and 'episodic' in _ext_dx
+        
+        if state_available and _is_botox_episodic:
+            # Show disabled search button with explanation
+            st.button("🔎 Search with Extracted Data", type="secondary", use_container_width=True, disabled=True)
+            st.caption("⚠️ Search disabled — Botox is not indicated for episodic migraine. Edit the medication or diagnosis above, then search.")
+        elif state_available:
             # State is available - show normal search button
             if st.button("🔎 Search with Extracted Data", type="primary", use_container_width=True):
                 # Determine the drug class to search for
