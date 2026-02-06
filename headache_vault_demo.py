@@ -2544,11 +2544,12 @@ def search_policies_with_fallback(db_b, state, payer=None, drug_class=None):
             cascade_message = ""
             
             # Define cascade order for preventive gepants
+            # NOTE: Use v3.0 canonical drug class names (e.g., 'CGRP mAbs (SC)' not 'CGRP mAbs')
             if drug_class == 'Gepants (Preventive)':
-                cascade_classes = ['Qulipta', 'CGRP mAbs']
+                cascade_classes = ['Qulipta', 'CGRP mAbs (SC)']
                 cascade_message = "Nurtec Preventive"
             elif drug_class == 'Qulipta':
-                cascade_classes = ['Gepants (Preventive)', 'CGRP mAbs']
+                cascade_classes = ['Gepants (Preventive)', 'CGRP mAbs (SC)']
                 cascade_message = "Qulipta"
             
             # Try cascade classes
@@ -4022,7 +4023,7 @@ Step Therapy: REQUIRED ({step_req}, {step_dur})
         st.sidebar.error("⚠️ Please select a state to search")
         # Use placeholder options when no state selected
         payer_options = ['All Payers']
-        state_drug_classes = ['CGRP mAbs']  # Default option
+        state_drug_classes = ['CGRP mAbs (SC)']  # Default option
     else:
         # Payer selection based on selected state
         state_payers = db_b[db_b['State'] == selected_state]['Payer_Name'].unique().tolist()
@@ -4044,7 +4045,7 @@ Step Therapy: REQUIRED ({step_req}, {step_dur})
     
     selected_drug = st.sidebar.selectbox(
         "Medication Class",
-        options=state_drug_classes if state_drug_classes else ['CGRP mAbs'],
+        options=state_drug_classes if state_drug_classes else ['CGRP mAbs (SC)'],
         index=SidebarHelper.get_drug_index(state_drug_classes) if not state_not_selected and state_drug_classes else 0,
         help=f"{len(state_drug_classes)} drug classes available" if not state_not_selected else "Select state first",
         key="sidebar_drug",
@@ -4130,9 +4131,10 @@ Step Therapy: REQUIRED ({step_req}, {step_dur})
             st.markdown(get_quality_indicator_html(score, desc), unsafe_allow_html=True)
             
             # ================================================================
-            # CLINICAL GUARDRAIL: Botox requires chronic migraine
+            # CLINICAL GUARDRAIL: Botox/Cluster mismatch with Episodic
             # ================================================================
             is_neurotoxin_search = selected_drug and ('neurotoxin' in selected_drug.lower() or 'botox' in selected_drug.lower())
+            is_cluster_search = selected_drug and 'cluster' in selected_drug.lower()
             is_episodic = headache_type == "Episodic Migraine"
             botox_warning_shown = False
             
@@ -4159,6 +4161,29 @@ Step Therapy: REQUIRED ({step_req}, {step_dur})
 </div>
 """, unsafe_allow_html=True)
                 botox_warning_shown = True
+            
+            elif is_cluster_search and is_episodic:
+                st.markdown("""
+<div style="background: #FFF3CD; border: 2px solid #FFC107; border-radius: 12px; padding: 1.25rem; margin: 1rem 0;">
+    <div style="font-weight: 700; color: #856404; font-size: 1.1rem; margin-bottom: 0.5rem;">
+        ⚠️ Clinical Alert: Cluster Medication with Episodic Migraine Diagnosis
+    </div>
+    <div style="color: #856404;">
+        <strong>CGRP mAbs (Cluster)</strong> refers to <strong>Emgality 300mg for cluster headache</strong> — a separate diagnosis from episodic migraine.
+    </div>
+    <div style="color: #856404; margin-top: 0.75rem;">
+        <strong>For episodic migraine prevention, consider instead:</strong>
+        <ul style="margin: 0.5rem 0 0 1rem; padding: 0;">
+            <li><strong>CGRP mAbs (SC)</strong> — Aimovig, Ajovy, Emgality 120mg (migraine-dose, FDA-approved for episodic + chronic)</li>
+            <li><strong>Gepants (Preventive)</strong> — Qulipta, Nurtec ODT EOD (oral preventive option)</li>
+        </ul>
+    </div>
+    <div style="color: #6B5A00; font-size: 0.85rem; margin-top: 0.75rem; font-style: italic;">
+        💡 If this patient has cluster headache, change the Headache Type filter to "Cluster Headache" in the sidebar.
+    </div>
+</div>
+""", unsafe_allow_html=True)
+                botox_warning_shown = True  # Reuse flag to suppress generic no-results message
             
             # Perform search with national fallback support
             query, fallback_used, fallback_message = search_policies_with_fallback(
@@ -4198,10 +4223,20 @@ Step Therapy: REQUIRED ({step_req}, {step_dur})
             # Note: If matched_payer is None (All Payers), skip payer_not_found error
         
         if len(results) == 0:
-            # Check if this is a Botox + episodic situation (common user error)
+            # Check if this is a Botox/Cluster + episodic situation (common user error)
             if st.session_state.get('botox_warning_shown', False):
-                st.warning("⚠️ No policies shown — Botox is not indicated for episodic migraine.")
-                st.info("""
+                is_cluster_mismatch = selected_drug and 'cluster' in selected_drug.lower() and headache_type == "Episodic Migraine"
+                if is_cluster_mismatch:
+                    st.warning("⚠️ No policies shown — CGRP mAbs (Cluster) is for cluster headache, not episodic migraine.")
+                    st.info("""
+                **Recommended next steps:**
+                - Change **Medication Class** to **CGRP mAbs (SC)** for migraine-dose Aimovig, Ajovy, Emgality
+                - Or change **Medication Class** to **Gepants (Preventive)** for oral options (Qulipta, Nurtec EOD)
+                - Or change **Headache Type** to **Cluster Headache** if patient truly has cluster headache
+                """)
+                else:
+                    st.warning("⚠️ No policies shown — Botox is not indicated for episodic migraine.")
+                    st.info("""
                 **Recommended next steps:**
                 - Change **Medication Class** to **CGRP mAbs (SC)** for preventive options (Aimovig, Ajovy, Emgality)
                 - Or change **Headache Type** to **Chronic Migraine** if patient truly has ≥15 headache days/month
@@ -4824,13 +4859,13 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
             if parsed_drug and parsed_drug in state_drugs:
                 drug_index = state_drugs.index(parsed_drug)
             elif parsed_drug:
-                # Handle cluster headache fallback - if cluster-specific drug not available, try CGRP mAbs
-                if 'Cluster' in parsed_drug and 'CGRP mAbs' in state_drugs:
-                    drug_index = state_drugs.index('CGRP mAbs')
-                    st.info(f"ℹ️ '{parsed_drug}' not available in {edited_state}. Using 'CGRP mAbs' (Emgality is FDA-approved for cluster headache).")
-                # If drug class not found but CGRP mAbs exists, default to that instead of Botox
-                elif 'CGRP mAbs' in state_drugs:
-                    drug_index = state_drugs.index('CGRP mAbs')
+                # Handle cluster headache fallback - if cluster-specific drug not available, try CGRP mAbs (SC)
+                if 'Cluster' in parsed_drug and 'CGRP mAbs (SC)' in state_drugs:
+                    drug_index = state_drugs.index('CGRP mAbs (SC)')
+                    st.info(f"ℹ️ '{parsed_drug}' not available in {edited_state}. Using 'CGRP mAbs (SC)' (Emgality is FDA-approved for cluster headache).")
+                # If drug class not found but CGRP mAbs (SC) exists, default to that instead of Botox
+                elif 'CGRP mAbs (SC)' in state_drugs:
+                    drug_index = state_drugs.index('CGRP mAbs (SC)')
             
             edited_drug = st.selectbox("Drug Class", options=state_drugs, index=drug_index)
             
@@ -4865,15 +4900,20 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
         # Search button - conditional based on whether state is available
         state_available = parsed.get('state') is not None
         
-        # Check if Botox + Episodic (should not search — clinically invalid)
+        # Check for clinically invalid combinations (should not search)
         _ext_drug = parsed.get('drug_class', '').lower()
         _ext_dx = parsed.get('diagnosis', '').lower()
         _is_botox_episodic = ('botox' in _ext_drug or 'neurotoxin' in _ext_drug) and 'episodic' in _ext_dx
+        _is_cluster_episodic = 'cluster' in _ext_drug and 'episodic' in _ext_dx
+        _is_invalid_combo = _is_botox_episodic or _is_cluster_episodic
         
-        if state_available and _is_botox_episodic:
+        if state_available and _is_invalid_combo:
             # Show disabled search button with explanation
             st.button("🔎 Search with Extracted Data", type="secondary", use_container_width=True, disabled=True)
-            st.caption("⚠️ Search disabled — Botox is not indicated for episodic migraine. Edit the medication or diagnosis above, then search.")
+            if _is_botox_episodic:
+                st.caption("⚠️ Search disabled — Botox is not indicated for episodic migraine. Edit the medication or diagnosis above, then search.")
+            else:
+                st.caption("⚠️ Search disabled — CGRP mAbs (Cluster) is for cluster headache, not episodic migraine. Edit the medication or diagnosis above, then search.")
         elif state_available:
             # State is available - show normal search button
             if st.button("🔎 Search with Extracted Data", type="primary", use_container_width=True):
@@ -4883,8 +4923,8 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
                 # Handle cluster headache drug class fallback
                 if search_drug_class and 'Cluster' in search_drug_class:
                     state_drugs = db_b[db_b['State'] == parsed.get('state')]['Drug_Class'].unique().tolist()
-                    if search_drug_class not in state_drugs and 'CGRP mAbs' in state_drugs:
-                        search_drug_class = 'CGRP mAbs'  # Fall back to CGRP mAbs for cluster
+                    if search_drug_class not in state_drugs and 'CGRP mAbs (SC)' in state_drugs:
+                        search_drug_class = 'CGRP mAbs (SC)'  # Fall back to CGRP mAbs (SC) for cluster
                 
                 # Perform search with national fallback support
                 query, fallback_used, fallback_message = search_policies_with_fallback(
