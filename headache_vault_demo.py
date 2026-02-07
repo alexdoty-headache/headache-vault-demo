@@ -495,10 +495,9 @@ def render_error_message(error: ErrorMessage, expanded: bool = True):
     appeal_html = ""
     if error.appeal_tip:
         appeal_html = f"""
-        <div style="background: #F0FDF4; border-left: 3px solid #22C55E; padding: 8px 12px; margin-top: 12px; border-radius: 4px;">
-            <strong style="color: #166534;">💡 Appeal Tip:</strong>
-            <span style="color: #166534;">{error.appeal_tip}</span>
-        </div>
+        <p style="background: #F0FDF4; border-left: 3px solid #22C55E; padding: 8px 12px; margin-top: 12px; border-radius: 4px; color: #166534;">
+            <strong>💡 Appeal Tip:</strong> {error.appeal_tip}
+        </p>
         """
     
     # Full message HTML
@@ -4720,8 +4719,8 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
         # ================================================================
         # CLINICAL GUARDRAIL: Botox + Episodic warning at extraction stage
         # ================================================================
-        extracted_drug = parsed.get('drug_class', '').lower()
-        extracted_diagnosis = parsed.get('diagnosis', '').lower()
+        extracted_drug = (parsed.get('drug_class') or '').lower()
+        extracted_diagnosis = (parsed.get('diagnosis') or '').lower()
         is_botox_extracted = 'botox' in extracted_drug or 'neurotoxin' in extracted_drug
         is_episodic_extracted = 'episodic' in extracted_diagnosis
         
@@ -4909,8 +4908,8 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
         state_available = parsed.get('state') is not None
         
         # Check for clinically invalid combinations (should not search)
-        _ext_drug = parsed.get('drug_class', '').lower()
-        _ext_dx = parsed.get('diagnosis', '').lower()
+        _ext_drug = (parsed.get('drug_class') or '').lower()
+        _ext_dx = (parsed.get('diagnosis') or '').lower()
         _is_botox_episodic = ('botox' in _ext_drug or 'neurotoxin' in _ext_drug) and 'episodic' in _ext_dx
         _is_cluster_episodic = 'cluster' in _ext_drug and 'episodic' in _ext_dx
         _is_invalid_combo = _is_botox_episodic or _is_cluster_episodic
