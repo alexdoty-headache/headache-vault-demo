@@ -4846,6 +4846,11 @@ Patient is interested in trying Aimovig (erenumab) for migraine prevention."""
                 parsed_data = parse_clinical_note(clinical_note, db_a, db_b)
                 
                 if parsed_data:
+                    # CRITICAL: Store raw clinical note text in parsed_data
+                    # so check_criteria_met() can search it for bypass conditions
+                    # (CV contraindications, pregnancy, serotonin syndrome, etc.)
+                    parsed_data['clinical_note'] = clinical_note
+                    
                     # Update unified patient context
                     SessionStateManager.set_from_ai_parse(parsed_data)
                     st.session_state.parsed_data = parsed_data  # Keep for backward compatibility
