@@ -491,16 +491,10 @@ def render_error_message(error: ErrorMessage, expanded: bool = True):
     # Build actions list HTML
     actions_html = "".join([f"<li style='margin-bottom: 4px;'>{action}</li>" for action in error.actions])
     
-    # Appeal tip HTML (if present)
-    appeal_html = ""
-    if error.appeal_tip:
-        appeal_html = f"""
-        <p style="background: #F0FDF4; border-left: 3px solid #22C55E; padding: 8px 12px; margin-top: 12px; border-radius: 4px; color: #166534;">
-            <strong>💡 Appeal Tip:</strong> {error.appeal_tip}
-        </p>
-        """
+    # Appeal tip rendered separately after the main HTML block
+    appeal_tip_text = error.appeal_tip if error.appeal_tip else None
     
-    # Full message HTML
+    # Full message HTML (without appeal tip - rendered separately to avoid nesting issues)
     html = f"""
     <div style="background: {c['bg']}; border: 1px solid {c['border']}; border-left: 4px solid {c['border']}; 
                 border-radius: 8px; padding: 16px; margin: 12px 0;">
@@ -516,11 +510,14 @@ def render_error_message(error: ErrorMessage, expanded: bool = True):
                 {actions_html}
             </ul>
         </div>
-        {appeal_html}
     </div>
     """
     
     st.markdown(html, unsafe_allow_html=True)
+    
+    # Render appeal tip as a separate element to avoid HTML nesting issues
+    if appeal_tip_text:
+        st.success(f"💡 **Appeal Tip:** {appeal_tip_text}")
 
 
 def show_error(error_type: str, **context):
