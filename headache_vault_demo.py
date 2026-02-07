@@ -551,28 +551,28 @@ class MedicationMatcher:
             "aimovig": {
                 "generic": "erenumab",
                 "brand": "Aimovig",
-                "drug_class": "CGRP mAbs",
+                "drug_class": "CGRP mAbs (SC)",
                 "aliases": ["erenumab", "aimovig", "erenumab-aooe"],
                 "common_misspellings": ["aimovag", "aimovig", "erenomab", "erenumob"]
             },
             "emgality": {
                 "generic": "galcanezumab",
                 "brand": "Emgality",
-                "drug_class": "CGRP mAbs",
+                "drug_class": "CGRP mAbs (SC)",
                 "aliases": ["galcanezumab", "emgality", "galcanezumab-gnlm"],
                 "common_misspellings": ["emgalaty", "galcanezumob", "galcanezemab"]
             },
             "ajovy": {
                 "generic": "fremanezumab",
                 "brand": "Ajovy",
-                "drug_class": "CGRP mAbs",
+                "drug_class": "CGRP mAbs (SC)",
                 "aliases": ["fremanezumab", "ajovy", "fremanezumab-vfrm"],
                 "common_misspellings": ["ajovey", "fremanezemab", "fremanezumob"]
             },
             "vyepti": {
                 "generic": "eptinezumab",
                 "brand": "Vyepti",
-                "drug_class": "CGRP mAbs",
+                "drug_class": "CGRP mAbs (IV)",
                 "aliases": ["eptinezumab", "vyepti", "eptinezumab-jjmr"],
                 "common_misspellings": ["viepti", "eptinezemab", "eptinezumob"]
             },
@@ -2505,6 +2505,8 @@ def search_policies_with_fallback(db_b, state, payer=None, drug_class=None):
             payer_keywords = ['highmark']
         elif 'independence' in payer_lower:
             payer_keywords = ['independence']
+        elif 'harvard' in payer_lower or 'pilgrim' in payer_lower or 'point32' in payer_lower or 'tufts' in payer_lower:
+            payer_keywords = ['harvard', 'pilgrim', 'point32', 'tufts']
         else:
             # Use first significant word as keyword
             payer_keywords = [payer.split()[0].lower()] if payer.split() else [payer_lower]
@@ -2551,6 +2553,9 @@ def search_policies_with_fallback(db_b, state, payer=None, drug_class=None):
             elif drug_class == 'Qulipta':
                 cascade_classes = ['Gepants (Preventive)', 'CGRP mAbs (SC)']
                 cascade_message = "Qulipta"
+            elif drug_class == 'CGRP mAbs (IV)':
+                cascade_classes = ['CGRP mAbs (SC)']
+                cascade_message = "Vyepti (IV infusion)"
             
             # Try cascade classes
             for cascade_class in cascade_classes:
@@ -2558,7 +2563,10 @@ def search_policies_with_fallback(db_b, state, payer=None, drug_class=None):
                 if len(cascade_query) > 0:
                     drug_query = cascade_query
                     fallback_used = True
-                    fallback_message = f"ℹ️ No {drug_class} policy found. Showing **{cascade_class}** policy (similar step therapy requirements)."
+                    if drug_class == 'CGRP mAbs (IV)':
+                        fallback_message = f"ℹ️ No Vyepti-specific (IV) policy found. Showing **CGRP mAbs (SC)** policy — Vyepti follows similar step therapy but is administered as quarterly IV infusion. Verify site-of-care and J-code (J3032) billing with payer."
+                    else:
+                        fallback_message = f"ℹ️ No {drug_class} policy found. Showing **{cascade_class}** policy (similar step therapy requirements)."
                     break
             
             # If still no results, try national fallback
@@ -3320,8 +3328,8 @@ Valid drug classes:
 {', '.join(drug_classes)}
 
 Medication name to class mapping:
-- Aimovig, Ajovy, Emgality (migraine), erenumab → "CGRP mAbs"
-- Emgality 300mg for CLUSTER HEADACHE → "CGRP mAb (Cluster)" (NOT "CGRP mAbs")
+- Aimovig, Ajovy, Emgality (migraine), erenumab → "CGRP mAbs (SC)"
+- Emgality 300mg for CLUSTER HEADACHE → "CGRP mAbs (Cluster)" (NOT "CGRP mAbs (SC)")
 - If diagnosis is Cluster Headache and medication is Emgality → "CGRP mAb (Cluster)"
 - Ubrelvy, ubrogepant → "Gepants" (acute only)
 - Zavzpret, zavegepant → "Gepants" (acute only)
@@ -3329,7 +3337,7 @@ Medication name to class mapping:
 - Nurtec ODT, rimegepant for PREVENTION → "Gepants (Preventive)"
 - Qulipta, atogepant → "Qulipta" (preventive only)
 - Botox, onabotulinumtoxinA → "Botox"
-- Vyepti, eptinezumab → "Vyepti"
+- Vyepti, eptinezumab → "CGRP mAbs (IV)"
 - For Cluster Headache prevention → "CGRP mAb (Cluster)" or "Emgality (Cluster)"
 
 CRITICAL - Nurtec indication detection:
@@ -3340,16 +3348,16 @@ CRITICAL - Nurtec indication detection:
 
 CRITICAL - Default preventive selection:
 - If patient "wants prevention" or "wants something to prevent" WITHOUT naming a specific drug:
-  → Default to "CGRP mAbs" (first-line injectable preventive, most common PA request)
+  → Default to "CGRP mAbs (SC)" (first-line injectable preventive, most common PA request)
 - Do NOT default to Botox unless explicitly mentioned - Botox is second-line and chronic migraine only
 - Do NOT default to Vyepti unless explicitly mentioned - Vyepti requires IV infusion
 - Qulipta is appropriate if patient prefers oral medication or has needle phobia
 
 DRUG CLASS PRIORITY for unspecified preventive requests:
-1. "CGRP mAbs" - Default choice (Aimovig, Ajovy, Emgality)
+1. "CGRP mAbs (SC)" - Default choice (Aimovig, Ajovy, Emgality)
 2. "Qulipta" - If oral preferred or needle concerns mentioned
 3. "Botox" - ONLY if explicitly requested or patient has failed CGRP mAbs
-4. "Vyepti" - ONLY if explicitly requested or patient needs IV option
+4. "CGRP mAbs (IV)" - ONLY if explicitly requested or patient needs IV option (Vyepti)
 
 CRITICAL - DIAGNOSIS CLASSIFICATION RULES:
 The diagnosis MUST be based on headache FREQUENCY or clinician's stated diagnosis, NEVER on the drug requested.
