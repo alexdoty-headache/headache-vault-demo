@@ -22,28 +22,28 @@ class MedicationMatcher:
             "aimovig": {
                 "generic": "erenumab",
                 "brand": "Aimovig",
-                "drug_class": "CGRP mAbs",
+                "drug_class": "CGRP mAbs (SC)",
                 "aliases": ["erenumab", "aimovig", "erenumab-aooe"],
                 "common_misspellings": ["aimovag", "aimovig", "erenomab", "erenumob"]
             },
             "emgality": {
                 "generic": "galcanezumab",
                 "brand": "Emgality",
-                "drug_class": "CGRP mAbs",
+                "drug_class": "CGRP mAbs (SC)",
                 "aliases": ["galcanezumab", "emgality", "galcanezumab-gnlm"],
                 "common_misspellings": ["emgalaty", "galcanezumob", "galcanezemab"]
             },
             "ajovy": {
                 "generic": "fremanezumab",
                 "brand": "Ajovy",
-                "drug_class": "CGRP mAbs",
+                "drug_class": "CGRP mAbs (SC)",
                 "aliases": ["fremanezumab", "ajovy", "fremanezumab-vfrm"],
                 "common_misspellings": ["ajovey", "fremanezemab", "fremanezumob"]
             },
             "vyepti": {
                 "generic": "eptinezumab",
                 "brand": "Vyepti",
-                "drug_class": "CGRP mAbs",
+                "drug_class": "CGRP mAbs (IV)",
                 "aliases": ["eptinezumab", "vyepti", "eptinezumab-jjmr"],
                 "common_misspellings": ["viepti", "eptinezemab", "eptinezumob"]
             },
@@ -259,7 +259,7 @@ class MedicationMatcher:
             "verapamil": {
                 "generic": "verapamil",
                 "brand": "Calan",
-                "drug_class": "Cluster Verapamil",
+                "drug_class": "CCB",
                 "aliases": ["verapamil", "calan", "verelan", "covera-hs"],
                 "common_misspellings": ["verapamel", "verapamil", "calan"]
             },
@@ -268,16 +268,16 @@ class MedicationMatcher:
             "lithium": {
                 "generic": "lithium",
                 "brand": "Lithobid",
-                "drug_class": "Cluster Lithium",
+                "drug_class": "Mood Stabilizer",
                 "aliases": ["lithium", "lithobid", "lithium carbonate"],
                 "common_misspellings": ["litheum", "litium"]
             },
             "oxygen": {
                 "generic": "oxygen",
-                "brand": "Oxygen",
-                "drug_class": "Cluster Oxygen",
-                "aliases": ["oxygen", "o2", "high-flow oxygen"],
-                "common_misspellings": []
+                "brand": "High-Flow Oxygen",
+                "drug_class": "Cluster Acute",
+                "aliases": ["oxygen", "high-flow oxygen", "high flow oxygen", "o2", "100% oxygen", "oxygen therapy"],
+                "common_misspellings": ["oxigen", "oxgyen"]
             },
             
             # ACE Inhibitors
