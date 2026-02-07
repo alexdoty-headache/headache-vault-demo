@@ -3436,8 +3436,8 @@ if not st.session_state.hipaa_acknowledged:
     st.markdown("""
     <div style="background: linear-gradient(135deg, #4B0082 0%, #6A0DAD 100%); 
                 color: white; padding: 2rem; border-radius: 12px; margin-bottom: 1rem; text-align: center;">
-        <div style="font-size: 2rem; margin-bottom: 0.5rem;">💊 The Headache Vault</div>
-        <div style="font-size: 1rem; opacity: 0.9;">Prior Authorization Automation Demo</div>
+        <div style="font-size: 2rem; margin-bottom: 0.5rem; color: #FFFFFF;">💊 The Headache Vault</div>
+        <div style="font-size: 1rem; color: rgba(255,255,255,0.9);">Prior Authorization Automation Demo</div>
     </div>
     """, unsafe_allow_html=True)
     
