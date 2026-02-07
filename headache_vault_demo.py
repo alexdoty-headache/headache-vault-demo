@@ -2739,10 +2739,24 @@ def send_lead_to_monday(name, email, practice, state, payer, drug_class, notes):
     """Send lead data to Monday.com CRM board"""
 
 
-def check_criteria_met(step_requirements, prior_medications, diagnosis):
+def check_criteria_met(step_requirements, prior_medications, diagnosis,
+                       parsed_data=None, policy_row=None):
     """
     Check if patient's documented history meets step therapy requirements.
-    Returns list of (requirement, met_status, details) tuples.
+    Now includes bypass detection for CV, pregnancy, serotonin syndrome,
+    and acute vs. preventive distinction.
+    
+    Args:
+        step_requirements: Raw text from Payer_Policies Step_1_Requirement column
+        prior_medications: List of medication names (str) or dicts with 'name' key
+        diagnosis: Patient diagnosis string
+        parsed_data: Full parsed_data dict from session state (for clinical note access)
+        policy_row: Policy row dict (for Medication_Category, Bypass_Exception access)
+    
+    Returns:
+        List of (requirement, met_status, details) tuples.
+        Special detail prefixes:
+          "⚡ BYPASS" = requirement met via clinical bypass
     """
     criteria_status = []
     step_req_lower = step_requirements.lower() if step_requirements else ''
@@ -2756,56 +2770,176 @@ def check_criteria_met(step_requirements, prior_medications, diagnosis):
             elif isinstance(m, dict) and m.get('name'):
                 prior_meds_lower.append(m['name'].lower())
     
-    # Common preventive medication classes
+    # =========================================================================
+    # BYPASS DETECTION — Check clinical note for bypass conditions
+    # =========================================================================
+    clinical_note_lower = ''
+    if parsed_data:
+        clinical_note_lower = str(parsed_data.get('clinical_note', '')).lower()
+        # Also check prior_medications text for contraindication mentions
+        for m in prior_medications or []:
+            if isinstance(m, dict):
+                reason = str(m.get('reason_stopped', '')).lower()
+                clinical_note_lower += ' ' + reason
+    
+    # --- CV Contraindication Detection ---
+    cv_keywords = [
+        'coronary artery disease', 'cad', 'myocardial infarction', 'prior mi',
+        'heart attack', 'ischemic heart', 'peripheral vascular disease', 'pvd',
+        'cerebrovascular', 'stroke', 'cva', 'tia', 'transient ischemic',
+        'uncontrolled hypertension', 'uncontrolled htn', 'severe hypertension',
+        'vasospastic angina', 'prinzmetal', 'wolff-parkinson-white', 'wpw',
+        'hemiplegic migraine', 'basilar migraine',
+        'triptans contraindicated', 'triptan contraindicated',
+        'contraindication to triptans', 'cannot use triptans',
+        'cardiovascular contraindication'
+    ]
+    has_cv_contraindication = any(kw in clinical_note_lower for kw in cv_keywords)
+    
+    # --- Pregnancy / Teratogen Detection ---
+    pregnancy_keywords = [
+        'pregnant', 'pregnancy', 'planning pregnancy', 'childbearing',
+        'reproductive age', 'trying to conceive', 'fertility',
+        'breastfeeding', 'lactating', 'postpartum',
+        'teratogenic contraindication', 'teratogen'
+    ]
+    has_pregnancy_bypass = any(kw in clinical_note_lower for kw in pregnancy_keywords)
+    
+    # --- Serotonin Syndrome Risk Detection (SSRI/SNRI + Triptan) ---
+    ssri_snri_keywords = [
+        'sertraline', 'zoloft', 'fluoxetine', 'prozac', 'paroxetine', 'paxil',
+        'escitalopram', 'lexapro', 'citalopram', 'celexa', 'fluvoxamine', 'luvox',
+        'venlafaxine', 'effexor', 'duloxetine', 'cymbalta', 'desvenlafaxine', 'pristiq',
+        'levomilnacipran', 'fetzima', 'ssri', 'snri',
+        'serotonin syndrome risk', 'serotonin syndrome'
+    ]
+    has_serotonin_risk = any(kw in clinical_note_lower for kw in ssri_snri_keywords)
+    
+    # --- Acute vs Preventive Detection ---
+    is_acute_medication = False
+    if policy_row:
+        med_category = str(policy_row.get('Medication_Category', '')).lower()
+        drug_class = str(policy_row.get('Drug_Class', '')).lower()
+        is_acute_medication = ('acute' in med_category or 'acute' in drug_class)
+    
+    # =========================================================================
+    # MEDICATION REFERENCE LISTS
+    # =========================================================================
     beta_blockers = ['propranolol', 'metoprolol', 'atenolol', 'nadolol', 'timolol']
     anticonvulsants = ['topiramate', 'topamax', 'valproate', 'depakote', 'divalproex', 'gabapentin']
     antidepressants = ['amitriptyline', 'nortriptyline', 'venlafaxine', 'duloxetine', 'effexor', 'cymbalta']
     ccbs = ['verapamil', 'flunarizine']
-    triptans = ['sumatriptan', 'rizatriptan', 'eletriptan', 'zolmitriptan', 'naratriptan', 'frovatriptan', 'almotriptan']
+    triptans = ['sumatriptan', 'rizatriptan', 'eletriptan', 'zolmitriptan',
+                'naratriptan', 'frovatriptan', 'almotriptan']
     
-    # Check for oral preventive requirements (CGRP mAbs)
-    if '2 oral preventive' in step_req_lower or ('2' in step_req_lower and 'preventive' in step_req_lower) or 'conventional oral' in step_req_lower:
-        classes_tried = 0
-        meds_found = []
+    # =========================================================================
+    # CRITERIA CHECKS WITH BYPASS LOGIC
+    # =========================================================================
+    
+    # --- Check 1: Oral Preventive Requirements ---
+    # Only applies to PREVENTIVE medications (CGRP mAbs, preventive gepants, Botox)
+    if '2 oral preventive' in step_req_lower or \
+       ('2' in step_req_lower and 'preventive' in step_req_lower) or \
+       'conventional oral' in step_req_lower:
         
-        for med in prior_meds_lower:
-            if any(bb in med for bb in beta_blockers) and 'Beta-blocker' not in [m.split(' (')[0] for m in meds_found]:
-                classes_tried += 1
-                meds_found.append(f"Beta-blocker ({med.title()})")
-            elif any(ac in med for ac in anticonvulsants) and 'Anticonvulsant' not in [m.split(' (')[0] for m in meds_found]:
-                classes_tried += 1
-                meds_found.append(f"Anticonvulsant ({med.title()})")
-            elif any(ad in med for ad in antidepressants) and 'Antidepressant' not in [m.split(' (')[0] for m in meds_found]:
-                classes_tried += 1
-                meds_found.append(f"Antidepressant ({med.title()})")
-            elif any(ccb in med for ccb in ccbs) and 'CCB' not in [m.split(' (')[0] for m in meds_found]:
-                classes_tried += 1
-                meds_found.append(f"CCB ({med.title()})")
-        
-        if classes_tried >= 2:
-            criteria_status.append(("≥2 oral preventive classes", True, f"{', '.join(meds_found[:3])}"))
-        elif classes_tried == 1:
-            criteria_status.append(("≥2 oral preventive classes", False, f"Only 1 class: {meds_found[0]}"))
+        # If this is an ACUTE medication, skip preventive requirement entirely
+        if is_acute_medication:
+            pass  # Don't add this criterion — it doesn't apply to acute meds
+        elif has_pregnancy_bypass:
+            # Pregnancy/teratogen bypass
+            criteria_status.append((
+                "≥2 oral preventive classes",
+                True,
+                "⚡ BYPASS — Teratogen bypass: valproate/topiramate contraindicated "
+                "(pregnancy/childbearing potential). Non-teratogenic alternatives or "
+                "CGRP therapy appropriate per AHS 2019 & DENY-STEP-003"
+            ))
         else:
-            criteria_status.append(("≥2 oral preventive classes", False, "No oral preventives documented"))
-    
-    # Check for triptan requirements (Gepants)
-    if 'triptan' in step_req_lower:
-        triptans_tried = []
-        for med in prior_meds_lower:
-            for t in triptans:
-                if t in med and t.title() not in triptans_tried:
-                    triptans_tried.append(t.title())
-        
-        if '2' in step_req_lower and 'triptan' in step_req_lower:
-            if len(triptans_tried) >= 2:
-                criteria_status.append(("≥2 triptans tried", True, f"{', '.join(triptans_tried[:2])}"))
-            elif len(triptans_tried) == 1:
-                criteria_status.append(("≥2 triptans tried", False, f"Only 1: {triptans_tried[0]}"))
+            # Standard preventive checking
+            classes_tried = 0
+            meds_found = []
+            
+            for med in prior_meds_lower:
+                if any(bb in med for bb in beta_blockers) and \
+                   'Beta-blocker' not in [m.split(' (')[0] for m in meds_found]:
+                    classes_tried += 1
+                    meds_found.append(f"Beta-blocker ({med.title()})")
+                elif any(ac in med for ac in anticonvulsants) and \
+                     'Anticonvulsant' not in [m.split(' (')[0] for m in meds_found]:
+                    classes_tried += 1
+                    meds_found.append(f"Anticonvulsant ({med.title()})")
+                elif any(ad in med for ad in antidepressants) and \
+                     'Antidepressant' not in [m.split(' (')[0] for m in meds_found]:
+                    classes_tried += 1
+                    meds_found.append(f"Antidepressant ({med.title()})")
+                elif any(ccb in med for ccb in ccbs) and \
+                     'CCB' not in [m.split(' (')[0] for m in meds_found]:
+                    classes_tried += 1
+                    meds_found.append(f"CCB ({med.title()})")
+            
+            if classes_tried >= 2:
+                criteria_status.append(("≥2 oral preventive classes", True, f"{', '.join(meds_found[:3])}"))
+            elif classes_tried == 1:
+                criteria_status.append(("≥2 oral preventive classes", False, f"Only 1 class: {meds_found[0]}"))
             else:
-                criteria_status.append(("≥2 triptans tried", False, "No triptans documented"))
+                criteria_status.append(("≥2 oral preventive classes", False, "No oral preventives documented"))
     
-    # Check for verapamil/lithium requirements (Cluster)
+    # --- Check 2: Triptan Requirements (for Gepants/Ditans) ---
+    if 'triptan' in step_req_lower:
+        
+        # CV Contraindication Bypass — highest priority
+        if has_cv_contraindication:
+            criteria_status.append((
+                "Triptan step therapy",
+                True,
+                "⚡ BYPASS — CV contraindication detected: triptans are vasoconstrictors "
+                "and are contraindicated per FDA labeling. Gepants/ditans do not cause "
+                "vasoconstriction (DENY-STEP-001, AHS 2021)"
+            ))
+        
+        # Serotonin Syndrome Bypass
+        elif has_serotonin_risk:
+            criteria_status.append((
+                "Triptan step therapy",
+                True,
+                "⚡ BYPASS — Serotonin syndrome risk: patient is on SSRI/SNRI. "
+                "Per FDA Drug Safety Communication, concomitant triptan + SSRI/SNRI "
+                "may cause serotonin syndrome. Gepants have no serotonergic activity "
+                "(DENY-SERO-001)"
+            ))
+        
+        # Hemiplegic/Basilar migraine bypass
+        elif 'hemiplegic' in clinical_note_lower or 'basilar' in clinical_note_lower:
+            criteria_status.append((
+                "Triptan step therapy",
+                True,
+                "⚡ BYPASS — Hemiplegic/basilar migraine: triptans are absolutely "
+                "contraindicated in this migraine subtype (DENY-STEP-001)"
+            ))
+        
+        # No bypass — standard triptan checking
+        else:
+            triptans_tried = []
+            for med in prior_meds_lower:
+                for t in triptans:
+                    if t in med and t.title() not in triptans_tried:
+                        triptans_tried.append(t.title())
+            
+            if '2' in step_req_lower and 'triptan' in step_req_lower:
+                if len(triptans_tried) >= 2:
+                    criteria_status.append(("≥2 triptans tried", True, f"{', '.join(triptans_tried[:2])}"))
+                elif len(triptans_tried) == 1:
+                    criteria_status.append(("≥2 triptans tried", False, f"Only 1: {triptans_tried[0]}"))
+                else:
+                    criteria_status.append(("≥2 triptans tried", False, "No triptans documented"))
+            elif 'triptan' in step_req_lower:
+                # Generic "triptan failure" without specific count
+                if len(triptans_tried) >= 1:
+                    criteria_status.append(("Triptan trial", True, f"{', '.join(triptans_tried)}"))
+                else:
+                    criteria_status.append(("Triptan trial", False, "No triptans documented"))
+    
+    # --- Check 3: Verapamil/Lithium Requirements (Cluster Headache) ---
     if 'verapamil' in step_req_lower or 'lithium' in step_req_lower:
         verapamil_tried = any('verapamil' in med for med in prior_meds_lower)
         lithium_tried = any('lithium' in med for med in prior_meds_lower)
@@ -4403,16 +4537,69 @@ Step Therapy: REQUIRED ({step_req}, {step_dur})
                         prior_meds = st.session_state.parsed_data.get('prior_medications', [])
                         diagnosis = st.session_state.parsed_data.get('diagnosis', '')
                         
-                        criteria_results = check_criteria_met(step_req, prior_meds, diagnosis)
+                        # Pass parsed_data and policy_row for bypass detection
+                        criteria_results = check_criteria_met(
+                            step_req, 
+                            prior_meds, 
+                            diagnosis,
+                            parsed_data=st.session_state.get('parsed_data'),
+                            policy_row=row.to_dict() if hasattr(row, 'to_dict') else row
+                        )
                         
                         if criteria_results:
                             st.markdown("---")
-                            st.markdown("##### ✅ Patient Criteria Status (from clinical note)")
+                            
+                            # Detect if any bypasses are active
+                            has_bypass = any('⚡ BYPASS' in str(details) for _, _, details in criteria_results)
+                            
+                            if has_bypass:
+                                st.markdown("##### ✅ Patient Criteria Status — Bypass Detected")
+                            else:
+                                st.markdown("##### ✅ Patient Criteria Status (from clinical note)")
                             
                             all_met = all(met for _, met, _ in criteria_results)
                             
                             for requirement, met, details in criteria_results:
-                                if met:
+                                if met and '⚡ BYPASS' in str(details):
+                                    # Bypass badge — distinct green+blue style
+                                    if 'CV contraindication' in details:
+                                        bypass_icon = "🫀"
+                                        bypass_label = "CV Contraindication Bypass"
+                                    elif 'Teratogen' in details or 'pregnancy' in details.lower():
+                                        bypass_icon = "🤰"
+                                        bypass_label = "Teratogen Bypass"
+                                    elif 'Serotonin' in details:
+                                        bypass_icon = "💊"
+                                        bypass_label = "Serotonin Syndrome Risk Bypass"
+                                    elif 'Hemiplegic' in details or 'basilar' in details.lower():
+                                        bypass_icon = "🧠"
+                                        bypass_label = "Migraine Subtype Bypass"
+                                    else:
+                                        bypass_icon = "⚡"
+                                        bypass_label = "Clinical Bypass"
+                                    
+                                    clean_details = details.replace('⚡ BYPASS — ', '')
+                                    
+                                    st.markdown(f"""
+                                    <div style="background: linear-gradient(135deg, #D1FAE5 0%, #DBEAFE 100%); 
+                                                padding: 1rem 1.25rem; border-radius: 10px; margin: 0.5rem 0; 
+                                                border-left: 5px solid #059669; border: 1px solid #A7F3D0;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                                            <span style="color: #065F46; font-weight: 700; font-size: 1rem;">
+                                                {bypass_icon} {bypass_label}
+                                            </span>
+                                            <span style="background: #059669; color: white; padding: 2px 10px; 
+                                                        border-radius: 12px; font-size: 0.75rem; font-weight: 600;">
+                                                STEP THERAPY WAIVED
+                                            </span>
+                                        </div>
+                                        <div style="color: #064E3B; margin-top: 0.5rem; font-size: 0.9rem; line-height: 1.5;">
+                                            {clean_details}
+                                        </div>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                                    
+                                elif met:
                                     st.markdown(f"""
                                     <div style="background: #D4EDDA; padding: 0.75rem 1rem; border-radius: 8px; margin: 0.5rem 0; border-left: 4px solid #28A745;">
                                         <span style="color: #155724; font-weight: 600;">✓ {requirement}</span><br>
@@ -4428,21 +4615,37 @@ Step Therapy: REQUIRED ({step_req}, {step_dur})
                                     """, unsafe_allow_html=True)
                             
                             if all_met:
-                                # Check if medication details (dose/duration/reason) are actually filled in
-                                # If not, show a softer "classes verified" message instead of "PA Ready"
-                                has_complete_details = all(
-                                    isinstance(med, dict) and med.get('dose') and med.get('duration_weeks') and med.get('reason_stopped')
-                                    for med in prior_meds if isinstance(med, dict)
-                                )
-                                if has_complete_details:
-                                    show_error("approved")
-                                else:
+                                if has_bypass:
+                                    # Bypass-specific approval message with denial code reference
                                     st.markdown("""
-                                    <div style="background: #E8F4FD; padding: 0.75rem 1rem; border-radius: 8px; margin: 0.5rem 0; border-left: 4px solid #3B82F6;">
-                                        <span style="color: #1E40AF; font-weight: 600;">ℹ️ Required medication classes documented</span><br>
-                                        <small style="color: #1E40AF;">Fill in dose, duration, and reason stopped below to generate PA letter.</small>
+                                    <div style="background: linear-gradient(135deg, #ECFDF5 0%, #EFF6FF 100%); 
+                                                padding: 1rem; border-radius: 8px; margin: 0.75rem 0; 
+                                                border: 2px solid #10B981;">
+                                        <div style="font-weight: 700; color: #065F46; font-size: 1rem;">
+                                            ✅ PA Ready — Clinical Bypass Applies
+                                        </div>
+                                        <div style="color: #064E3B; font-size: 0.85rem; margin-top: 0.25rem;">
+                                            Standard step therapy requirements are waived due to documented 
+                                            clinical contraindication. The PA letter will include bypass 
+                                            language and supporting clinical references.
+                                        </div>
                                     </div>
                                     """, unsafe_allow_html=True)
+                                else:
+                                    # Standard all-met check
+                                    has_complete_details = all(
+                                        isinstance(med, dict) and med.get('dose') and med.get('duration_weeks') and med.get('reason_stopped')
+                                        for med in prior_meds if isinstance(med, dict)
+                                    )
+                                    if has_complete_details:
+                                        show_error("approved")
+                                    else:
+                                        st.markdown("""
+                                        <div style="background: #E8F4FD; padding: 0.75rem 1rem; border-radius: 8px; margin: 0.5rem 0; border-left: 4px solid #3B82F6;">
+                                            <span style="color: #1E40AF; font-weight: 600;">ℹ️ Required medication classes documented</span><br>
+                                            <small style="color: #1E40AF;">Fill in dose, duration, and reason stopped below to generate PA letter.</small>
+                                        </div>
+                                        """, unsafe_allow_html=True)
                             else:
                                 # Count what's missing for a more specific error
                                 unmet_requirements = [req for req, met, _ in criteria_results if not met]
