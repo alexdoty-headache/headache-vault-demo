@@ -2633,7 +2633,7 @@ DRUG_NAME_MAP = {
 
 def extract_selected_drug_name(parsed_data: dict) -> str:
     """Extract canonical drug name from parsed clinical note or sidebar selection."""
-    if not parsed_data:
+    if not parsed_data or not isinstance(parsed_data, dict):
         return ""
     # Check common fields for drug mentions
     for field in ['drug', 'medication', 'drug_class', 'requested_medication']:
