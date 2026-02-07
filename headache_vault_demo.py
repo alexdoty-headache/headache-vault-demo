@@ -790,6 +790,13 @@ class MedicationMatcher:
                 "aliases": ["lithium", "lithobid", "lithium carbonate"],
                 "common_misspellings": ["litheum", "lithiam"]
             },
+            "oxygen": {
+                "generic": "oxygen",
+                "brand": "High-Flow Oxygen",
+                "drug_class": "Cluster Acute",
+                "aliases": ["oxygen", "high-flow oxygen", "high flow oxygen", "o2", "100% oxygen", "oxygen therapy"],
+                "common_misspellings": ["oxigen", "oxgyen"]
+            },
             "candesartan": {
                 "generic": "candesartan",
                 "brand": "Atacand",
