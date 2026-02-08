@@ -3410,12 +3410,26 @@ DO NOT:
 - Make up or infer ANY information
 
 EXAMPLES OF CORRECT BEHAVIOR:
-- Note says "45-year-old" → age: 45
+- Note says "45-year-old" or "45F" or "43yo" → age: 45 or 43
 - Note does NOT mention age → age: null (NOT a guess like 35)
 - Note says "lives in Philadelphia" → state: "PA"
+- Note says "Phila PA" or "PHX AZ" or "NYC" → state: "PA" or "AZ" or "NY"
+- Note says "Boston" → state: "MA" (infer state from well-known US cities)
 - Note does NOT mention location → state: null (NOT a guess like "PA")
 - Note says "has Aetna" → payer: "Aetna"
 - Note does NOT mention insurance → payer: null
+
+CRITICAL - CLINICAL SHORTHAND: Clinicians often use abbreviations. You MUST recognize:
+- City abbreviations: "Phila" = Philadelphia, "PHX" = Phoenix, "NYC" = New York, "LA" = Los Angeles, "MPLS" = Minneapolis, "DFW" = Dallas/Fort Worth
+- State after city: "Phila PA" means Philadelphia, Pennsylvania → state: "PA"
+- Two-letter state codes: "AZ", "PA", "CA", "TX", "NY", "FL" etc. are states even without city names
+- Age shorthand: "43F" = 43-year-old female, "55M" = 55-year-old male, "28yo" = 28 years old
+- Duration shorthand: "x 12wk" = 12 weeks, "x 3mo" = 12 weeks, "x 10wk" = 10 weeks
+- Medication shorthand: "topa" = topiramate, "prop" = propranolol, "ami" = amitriptyline, "suma" = sumatriptan
+- Outcome shorthand: "d/c" = discontinued, "inad resp" = inadequate response, "cog se" = cognitive side effects, "AE" = adverse effect
+- Insurance shorthand: "IBC" or "IBX" = Independence Blue Cross, "BCBS" = Blue Cross Blue Shield, "UHC" = UnitedHealthcare, "comm" = commercial plan
+- Frequency shorthand: "20d/mo" = 20 days per month, "HA" = headache
+- Score shorthand: "MIDAS 55" = MIDAS score of 55 (disability measure)
 
 CRITICAL: Look for insurance/payer information carefully. Examples:
 - "Has Independence Blue Cross" → payer: "Independence Blue Cross"
