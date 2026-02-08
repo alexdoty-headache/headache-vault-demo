@@ -3347,6 +3347,7 @@ def validate_parsed_data(parsed, note_text):
     """
     Unified post-processing validator for parse_clinical_note output.
     Catches hallucinated states and ages by verifying against the original note.
+    Also corrects drug class misclassifications.
     """
     validation_log = []
     
@@ -3363,6 +3364,66 @@ def validate_parsed_data(parsed, note_text):
         if age_msg:
             validation_log.append(age_msg)
     parsed['age'] = validated_age
+    
+    # =========================================================================
+    # Validate DRUG CLASS — deterministic correction of common AI misclassifications
+    # =========================================================================
+    note_lower = note_text.lower()
+    drug_class = str(parsed.get('drug_class', '') or '').lower()
+    
+    # --- Nurtec / rimegepant classification fix ---
+    nurtec_mentioned = any(term in note_lower for term in ['nurtec', 'rimegepant'])
+    if nurtec_mentioned:
+        # Check for acute indicators
+        acute_indicators = ['prn', 'as needed', 'acute', 'rescue', 'abort', 'episodic migraine']
+        preventive_indicators = ['prevent', 'prophylaxis', 'daily', 'every other day', 'eod']
+        
+        is_acute = any(term in note_lower for term in acute_indicators)
+        is_preventive = any(term in note_lower for term in preventive_indicators)
+        
+        if is_acute and not is_preventive:
+            if parsed.get('drug_class') != 'Gepants (Acute)':
+                validation_log.append(f"Drug class corrected: '{parsed.get('drug_class')}' → 'Gepants (Acute)' (Nurtec PRN/acute detected)")
+                parsed['drug_class'] = 'Gepants (Acute)'
+        elif is_preventive and not is_acute:
+            if parsed.get('drug_class') != 'Gepants (Preventive)':
+                validation_log.append(f"Drug class corrected: '{parsed.get('drug_class')}' → 'Gepants (Preventive)' (Nurtec preventive detected)")
+                parsed['drug_class'] = 'Gepants (Preventive)'
+    
+    # --- Ubrelvy / ubrogepant is ALWAYS acute ---
+    ubrelvy_mentioned = any(term in note_lower for term in ['ubrelvy', 'ubrogepant'])
+    if ubrelvy_mentioned and parsed.get('drug_class') not in ['Gepants (Acute)', 'Gepants']:
+        validation_log.append(f"Drug class corrected: '{parsed.get('drug_class')}' → 'Gepants (Acute)' (Ubrelvy is always acute)")
+        parsed['drug_class'] = 'Gepants (Acute)'
+    
+    # --- Zavzpret / zavegepant is ALWAYS acute ---
+    zavzpret_mentioned = any(term in note_lower for term in ['zavzpret', 'zavegepant'])
+    if zavzpret_mentioned and parsed.get('drug_class') not in ['Gepants (Acute)', 'Gepants']:
+        validation_log.append(f"Drug class corrected: '{parsed.get('drug_class')}' → 'Gepants (Acute)' (Zavzpret is always acute)")
+        parsed['drug_class'] = 'Gepants (Acute)'
+    
+    # --- Qulipta / atogepant is ALWAYS preventive ---
+    qulipta_mentioned = any(term in note_lower for term in ['qulipta', 'atogepant'])
+    if qulipta_mentioned and parsed.get('drug_class') not in ['Qulipta', 'Gepants (Preventive)']:
+        validation_log.append(f"Drug class corrected: '{parsed.get('drug_class')}' → 'Gepants (Preventive)' (Qulipta is always preventive)")
+        parsed['drug_class'] = 'Gepants (Preventive)'
+    
+    # --- Cluster headache class should ONLY apply if diagnosis mentions cluster ---
+    if parsed.get('drug_class') and 'cluster' in str(parsed['drug_class']).lower():
+        diagnosis = str(parsed.get('diagnosis', '')).lower()
+        if 'cluster' not in diagnosis and 'cluster' not in note_lower:
+            # Misclassified as cluster — correct based on medication
+            if any(term in note_lower for term in ['emgality', 'galcanezumab']):
+                parsed['drug_class'] = 'CGRP mAbs (SC)'
+                validation_log.append(f"Drug class corrected: Cluster class removed (no cluster diagnosis). → 'CGRP mAbs (SC)'")
+            elif nurtec_mentioned or ubrelvy_mentioned:
+                parsed['drug_class'] = 'Gepants (Acute)'
+                validation_log.append(f"Drug class corrected: Cluster class removed (no cluster diagnosis). → 'Gepants (Acute)'")
+    
+    # --- Normalize "Gepants" to "Gepants (Acute)" for policy matching ---
+    if parsed.get('drug_class') == 'Gepants':
+        parsed['drug_class'] = 'Gepants (Acute)'
+        validation_log.append("Drug class normalized: 'Gepants' → 'Gepants (Acute)' for policy matching")
     
     # Store log
     parsed['_validation_log'] = validation_log
