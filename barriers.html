@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Access Problem | The Headache Vault</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Source+Sans+3:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --purple-deep: #2D1B4E;
+            --purple-primary: #5B3E8C;
+            --purple-mid: #7E5BAE;
+            --purple-light: #A88BD4;
+            --purple-pale: #E8DFF5;
+            --white: #FFFFFF;
+            --gray-100: #F8F7FA;
+            --gray-600: #6B6B7B;
+            --red-accent: #C0392B;
+            --red-light: #FADBD8;
+            --amber-accent: #D4A017;
+            --amber-light: #FEF9E7;
+            --font-heading: 'Montserrat', sans-serif;
+            --font-body: 'Source Sans 3', sans-serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: var(--font-body);
+            background: var(--white);
+            color: var(--purple-deep);
+            line-height: 1.6;
+        }
+
+        /* Header - matches main site */
+        header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 1rem 4rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--purple-pale);
+            z-index: 100;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--purple-primary), var(--purple-mid));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.25rem;
+        }
+
+        .logo-text {
+            font-family: var(--font-heading);
+            font-weight: 700;
+            font-size: 1.25rem;
+            color: var(--purple-deep);
+        }
+
+        nav {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        nav a {
+            color: var(--gray-600);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        nav a:hover { color: var(--purple-primary); }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--purple-primary), var(--purple-mid));
+            color: white;
+            box-shadow: 0 4px 15px rgba(91, 62, 140, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(91, 62, 140, 0.4);
+        }
+
+        /* Hero */
+        .page-hero {
+            padding: 10rem 4rem 4rem;
+            background: linear-gradient(180deg, var(--gray-100) 0%, var(--white) 100%);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .page-hero::before {
+            content: '';
+            position: absolute;
+            top: -30%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120%;
+            height: 120%;
+            background: radial-gradient(ellipse, rgba(192, 57, 43, 0.04) 0%, transparent 60%);
+            pointer-events: none;
+        }
+
+        .page-hero h1 {
+            font-family: var(--font-heading);
+            font-size: clamp(2rem, 4.5vw, 3rem);
+            font-weight: 800;
+            line-height: 1.2;
+            margin-bottom: 1.25rem;
+            color: var(--purple-deep);
+            position: relative;
+        }
+
+        .page-hero h1 span {
+            color: var(--red-accent);
+        }
+
+        .page-hero .subtitle {
+            font-size: 1.2rem;
+            color: var(--gray-600);
+            max-width: 700px;
+            margin: 0 auto 1rem;
+            line-height: 1.7;
+        }
+
+        .page-hero .hero-stat {
+            font-family: var(--font-heading);
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--purple-primary);
+            margin-top: 1.5rem;
+        }
+
+        /* Cascade Section */
+        .cascade-section {
+            padding: 4rem 4rem 3rem;
+            max-width: 960px;
+            margin: 0 auto;
+        }
+
+        .cascade-section .section-intro {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .cascade-section .section-intro h2 {
+            font-family: var(--font-heading);
+            font-size: 1.85rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+        }
+
+        .cascade-section .section-intro p {
+            color: var(--gray-600);
+            max-width: 640px;
+            margin: 0 auto;
+            font-size: 1.05rem;
+        }
+
+        /* Funnel Visual */
+        .funnel {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            margin-bottom: 3rem;
+        }
+
+        .funnel-step {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            gap: 1.5rem;
+            position: relative;
+        }
+
+        .funnel-bar-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .funnel-bar {
+            height: 54px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-heading);
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: white;
+            transition: all 0.4s ease;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .funnel-bar:hover {
+            transform: scaleY(1.06);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+
+        .funnel-bar.clickable::after {
+            content: '▾ Details';
+            position: absolute;
+            bottom: -18px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            color: var(--purple-mid);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .funnel-bar.clickable:hover::after {
+            opacity: 1;
+        }
+
+        .funnel-label-left {
+            text-align: right;
+            font-size: 0.95rem;
+            color: var(--gray-600);
+        }
+
+        .funnel-label-right {
+            text-align: left;
+        }
+
+        .funnel-label-right .dropoff {
+            font-family: var(--font-heading);
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: var(--red-accent);
+        }
+
+        .funnel-label-right .driver {
+            font-size: 0.85rem;
+            color: var(--gray-600);
+            display: block;
+            margin-top: 0.1rem;
+        }
+
+        .funnel-connector {
+            width: 2px;
+            height: 14px;
+            background: var(--purple-pale);
+            margin: 0 auto;
+        }
+
+        /* Bottom line callout */
+        .bottom-line {
+            background: var(--purple-deep);
+            border-radius: 16px;
+            padding: 2.5rem 3rem;
+            text-align: center;
+            color: white;
+            margin-bottom: 3rem;
+        }
+
+        .bottom-line .big-ratio {
+            font-family: var(--font-heading);
+            font-size: clamp(2.5rem, 5vw, 3.5rem);
+            font-weight: 800;
+            color: var(--purple-light);
+            margin-bottom: 0.5rem;
+        }
+
+        .bottom-line p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            max-width: 560px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        /* Map Section */
+        .map-section {
+            padding: 4rem 4rem;
+            background: var(--gray-100);
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+
+        .section-header h2 {
+            font-family: var(--font-heading);
+            font-size: 1.85rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+        }
+
+        .section-header p {
+            color: var(--gray-600);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .map-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(45, 27, 78, 0.15);
+            border: 1px solid var(--purple-pale);
+        }
+
+        .map-container iframe {
+            width: 100%;
+            height: 550px;
+            border: none;
+            display: block;
+        }
+
+        .map-caption {
+            text-align: center;
+            margin-top: 1.25rem;
+            color: var(--gray-600);
+            font-size: 0.9rem;
+        }
+
+        /* Detail Panels */
+        .stage-details {
+            padding: 0 4rem 4rem;
+            max-width: 960px;
+            margin: 0 auto;
+        }
+
+        .stage-panel {
+            border: 1px solid var(--purple-pale);
+            border-radius: 16px;
+            margin-bottom: 1.25rem;
+            overflow: hidden;
+            transition: box-shadow 0.3s;
+        }
+
+        .stage-panel:hover {
+            box-shadow: 0 4px 20px rgba(91, 62, 140, 0.08);
+        }
+
+        .stage-toggle {
+            width: 100%;
+            background: none;
+            border: none;
+            padding: 1.25rem 1.75rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            cursor: pointer;
+            font-family: var(--font-body);
+            text-align: left;
+            transition: background 0.2s;
+        }
+
+        .stage-toggle:hover {
+            background: var(--gray-100);
+        }
+
+        .stage-number {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--purple-primary), var(--purple-mid));
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-heading);
+            font-weight: 700;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+
+        .stage-toggle-text {
+            flex: 1;
+        }
+
+        .stage-toggle-text h3 {
+            font-family: var(--font-heading);
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--purple-deep);
+        }
+
+        .stage-toggle-text .stage-subtitle {
+            font-size: 0.88rem;
+            color: var(--gray-600);
+            margin-top: 0.15rem;
+        }
+
+        .stage-arrow {
+            font-size: 1.2rem;
+            color: var(--purple-mid);
+            transition: transform 0.3s;
+            flex-shrink: 0;
+        }
+
+        .stage-panel.open .stage-arrow {
+            transform: rotate(180deg);
+        }
+
+        .stage-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease;
+        }
+
+        .stage-panel.open .stage-content {
+            max-height: 2000px;
+        }
+
+        .stage-content-inner {
+            padding: 0 1.75rem 1.75rem;
+        }
+
+        .barrier-item {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 1rem;
+            padding: 1rem 0;
+            border-bottom: 1px solid var(--purple-pale);
+            align-items: start;
+        }
+
+        .barrier-item:last-child {
+            border-bottom: none;
+        }
+
+        .barrier-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--purple-deep);
+            margin-bottom: 0.25rem;
+        }
+
+        .barrier-impact {
+            font-size: 0.88rem;
+            color: var(--gray-600);
+            line-height: 1.5;
+        }
+
+        .barrier-source {
+            font-size: 0.75rem;
+            color: var(--purple-mid);
+            font-style: italic;
+            text-align: right;
+            white-space: nowrap;
+            align-self: center;
+        }
+
+        /* Sources */
+        .sources-section {
+            padding: 3rem 4rem;
+            background: var(--gray-100);
+            max-width: 100%;
+        }
+
+        .sources-inner {
+            max-width: 960px;
+            margin: 0 auto;
+        }
+
+        .sources-inner h2 {
+            font-family: var(--font-heading);
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--purple-deep);
+        }
+
+        .sources-inner p {
+            font-size: 0.85rem;
+            color: var(--gray-600);
+            line-height: 1.8;
+        }
+
+        /* CTA */
+        .page-cta {
+            padding: 4rem;
+            background: linear-gradient(135deg, var(--purple-deep) 0%, var(--purple-primary) 100%);
+            text-align: center;
+            color: white;
+        }
+
+        .page-cta h2 {
+            font-family: var(--font-heading);
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .page-cta p {
+            opacity: 0.9;
+            margin-bottom: 2rem;
+            max-width: 520px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .btn-white {
+            background: white;
+            color: var(--purple-primary);
+            font-weight: 700;
+            padding: 1rem 2rem;
+            font-size: 1.05rem;
+        }
+
+        .btn-white:hover {
+            background: var(--purple-pale);
+            transform: translateY(-2px);
+        }
+
+        /* Footer */
+        footer {
+            padding: 2rem 4rem;
+            text-align: center;
+            background: var(--purple-deep);
+            color: rgba(255,255,255,0.6);
+            font-size: 0.85rem;
+        }
+
+        footer a {
+            color: var(--purple-light);
+            text-decoration: none;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            header { padding: 1rem 1.5rem; }
+            nav { gap: 1rem; }
+            nav a:not(.btn) { display: none; }
+            .page-hero { padding: 8rem 1.5rem 3rem; }
+            .cascade-section { padding: 3rem 1.5rem 2rem; }
+            .stage-details { padding: 0 1.5rem 3rem; }
+            .sources-section { padding: 2rem 1.5rem; }
+            .page-cta { padding: 3rem 1.5rem; }
+
+            .funnel-step {
+                grid-template-columns: 1fr;
+                gap: 0.25rem;
+                text-align: center;
+            }
+            .funnel-label-left,
+            .funnel-label-right { text-align: center; }
+            .funnel-bar { min-height: 44px; font-size: 0.95rem; }
+
+            .barrier-item {
+                grid-template-columns: 1fr;
+            }
+            .barrier-source {
+                text-align: left;
+            }
+            .bottom-line { padding: 2rem 1.5rem; }
+        }
+
+        /* Animation */
+        .fade-in {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+        .fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <a href="index.html" class="logo">
+            <div class="logo-icon">🔓</div>
+            <span class="logo-text">The Headache Vault</span>
+        </a>
+        <nav>
+            <a href="index.html">Home</a>
+            <a href="index.html#features">Features</a>
+            <a href="index.html#pricing">Pricing</a>
+            <a href="index.html#demo" class="btn btn-primary">Try Beta Demo</a>
+        </nav>
+    </header>
+
+    <main>
+        <section class="page-hero">
+            <h1>Over 7 Million Americans Need Advanced Migraine Treatment.<br><span>Only 575,000</span> Are Getting It.</h1>
+            <p class="subtitle">For the 7–10 million patients who've failed other therapies and are clinically appropriate for CGRP/gepant medications, the problem isn't the drugs — it's the gauntlet of administrative, financial, and systemic barriers standing between them and relief.</p>
+            <p class="hero-stat">Roughly 1 in 14 clinically appropriate patients is on continuous CGRP/gepant therapy.</p>
+        </section>
+
+        <section class="cascade-section">
+            <div class="section-intro fade-in">
+                <h2>The Compounding Cascade</h2>
+                <p>Each stage of the treatment journey loses patients. The barriers compound — and the system's most modifiable failures sit right in the middle.</p>
+            </div>
+
+            <div class="funnel fade-in">
+                <!-- Step 1 -->
+                <div class="funnel-step">
+                    <div class="funnel-label-left">Total with migraine</div>
+                    <div class="funnel-bar-container">
+                        <div class="funnel-bar clickable" style="width: 100%; max-width: 620px; background: var(--purple-deep);" onclick="openPanel('stage-1')">~39,000,000</div>
+                    </div>
+                    <div class="funnel-label-right"></div>
+                </div>
+                <div class="funnel-connector"></div>
+
+                <!-- Step 2 -->
+                <div class="funnel-step">
+                    <div class="funnel-label-left">Diagnosed</div>
+                    <div class="funnel-bar-container">
+                        <div class="funnel-bar clickable" style="width: 62%; max-width: 384px; background: var(--purple-primary);" onclick="openPanel('stage-1')">~24,000,000</div>
+                    </div>
+                    <div class="funnel-label-right">
+                        <span class="dropoff">↓ ~38% lost</span>
+                        <span class="driver">Awareness, stigma, access</span>
+                    </div>
+                </div>
+                <div class="funnel-connector"></div>
+
+                <!-- Step 3 -->
+                <div class="funnel-step">
+                    <div class="funnel-label-left">Prescribed a CGRP/gepant</div>
+                    <div class="funnel-bar-container">
+                        <div class="funnel-bar clickable" style="width: 28%; max-width: 174px; background: var(--purple-mid);" onclick="openPanel('stage-2')">~3–4M</div>
+                    </div>
+                    <div class="funnel-label-right">
+                        <span class="dropoff">↓ ~57–60% lost</span>
+                        <span class="driver">Prescriber inertia, specialist shortage</span>
+                    </div>
+                </div>
+                <div class="funnel-connector"></div>
+
+                <!-- Step 4 -->
+                <div class="funnel-step">
+                    <div class="funnel-label-left">PA approved</div>
+                    <div class="funnel-bar-container">
+                        <div class="funnel-bar clickable" style="width: 22%; max-width: 136px; background: var(--amber-accent);" onclick="openPanel('stage-3')">~2.4–3.2M</div>
+                    </div>
+                    <div class="funnel-label-right">
+                        <span class="dropoff">↓ ~20% lost</span>
+                        <span class="driver">PA friction, denials</span>
+                    </div>
+                </div>
+                <div class="funnel-connector"></div>
+
+                <!-- Step 5 -->
+                <div class="funnel-step">
+                    <div class="funnel-label-left">Filled at pharmacy</div>
+                    <div class="funnel-bar-container">
+                        <div class="funnel-bar clickable" style="width: 15%; max-width: 93px; background: #D4740E;" onclick="openPanel('stage-4')">~1.4–2.2M</div>
+                    </div>
+                    <div class="funnel-label-right">
+                        <span class="dropoff">↓ ~30–40% lost</span>
+                        <span class="driver">Cost shock, abandonment</span>
+                    </div>
+                </div>
+                <div class="funnel-connector"></div>
+
+                <!-- Step 6 -->
+                <div class="funnel-step">
+                    <div class="funnel-label-left">On therapy at 12 months</div>
+                    <div class="funnel-bar-container">
+                        <div class="funnel-bar clickable" style="width: 8%; max-width: 68px; background: var(--red-accent); font-size: 0.9rem; min-width: 68px;" onclick="openPanel('stage-5')">~575K</div>
+                    </div>
+                    <div class="funnel-label-right">
+                        <span class="dropoff">↓ ~45% lost</span>
+                        <span class="driver">Cost, non-response, PA renewal gaps</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bottom-line fade-in">
+                <div class="big-ratio">1 in 14</div>
+                <p>Of the 7–10 million Americans clinically appropriate for CGRP/gepant therapy — patients who've failed other treatments — only about 575,000 are on continuous therapy at any given time.</p>
+            </div>
+        </section>
+
+        <section class="map-section">
+            <div class="section-header">
+                <h2>The Diagnosis Gap, Mapped</h2>
+                <p>15.3 million Americans with migraine remain undiagnosed. Geographic disparities in care access leave entire communities without treatment.</p>
+            </div>
+            <div class="map-container">
+                <iframe src="https://online.caliper.com/mas-795-ljp-686-hnx/maps/ml10nkl8009r3zaq8jgq" title="Undiagnosed Migraine Patients by ZIP Code"></iframe>
+            </div>
+            <p class="map-caption">Interactive map: Estimated undiagnosed migraine patients by ZIP code</p>
+        </section>
+
+        <section class="stage-details">
+            <div class="stage-panel" id="stage-1">
+                <button class="stage-toggle" onclick="togglePanel('stage-1')">
+                    <div class="stage-number">1</div>
+                    <div class="stage-toggle-text">
+                        <h3>Getting Diagnosed</h3>
+                        <p class="stage-subtitle">~15 million Americans with migraine have never been diagnosed</p>
+                    </div>
+                    <span class="stage-arrow">▾</span>
+                </button>
+                <div class="stage-content">
+                    <div class="stage-content-inner">
+                        <div class="barrier-item">
+                            <div>
+                                <div class="barrier-name">Undiagnosed migraine</div>
+                                <div class="barrier-impact">Of ~39 million Americans with migraine, approximately 15.3 million have never received a diagnosis.</div>
+                            </div>
+                            <div class="barrier-source">American Migraine Foundation</div>
+                        </div>
+                        <div class="barrier-item">
+                            <div>
+                                <div class="barrier-name">Specialist shortage</div>
+                                <div class="barrier-impact">Only 564 UCNS-accredited headache specialists serve ~39 million patients. The field needs at least 3,700.</div>
+                            </div>
+                            <div class="barrier-source">Headache journal; AHS</div>
+                        </div>
+                        <div class="barrier-item">
+                            <div>
+                                <div class="barrier-name">Wait times</div>
+                                <div class="barrier-impact">Average 3.7 months for a first specialist visit — up to 14 months in some areas.</div>
+                            </div>
+                            <div class="barrier-source">Kainth et al., Neurology &amp; Therapy (2020)</div>
+                        </div>
+                        <div class="barrier-item">
+                            <div>
+                                <div class="barrier-name">Primary care knowledge gap</div>
+                                <div class="barrier-impact">Medical school devotes roughly 3 hours to headache education, yet 52.8% of migraine encounters happen in primary care.</div>
+                            </div>
+                            <div class="barrier-source">AHS; Medscape/AHS 2024</div>
+                        </div>
+                        <div class="barrier-item">
+                            <div>
+                                <div class="barrier-name">Stigma and minimization</div>
+                                <div class="barrier-impact">Patients don't seek care and providers dismiss symptoms as "just headaches."</div>
+                            </div>
+                            <div class="barrier-source">AHS; American Migraine Foundation</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stage-panel" id="stage-2">
+                <button class="stage-toggle" onclick="togglePanel('stage-2')">
+                    <div class="stage-number">2</div>
+                    <div class="stage-toggle-text">
+                        <h3>Getting Prescribed the Right Drug</h3>
+                        <p class="stage-subtitle">Step therapy mandates and prescriber inertia block escalation to CGRPs</p>
+                    </div>
+                    <span class="stage-arrow">▾</span>
+                </button>
+                <div class="stage-content">
+                    <div class="stage-content-inner">
+                        <div class="barrier-item">
+                            <div>
+                                <div class="barrier-name">Prescriber inertia</div>
+                                <div class="barrier-impact">PCPs comfortable with triptans rarely escalate to CGRPs even when clinically indicated.</div>
+                            </div>
+                            <div class="barrier-source">AHS clinical guidance</div>
+                        </div>
+                        <div class="barrier-item">
+                            <div>
+                                <div class="barrier-name">Step therapy requirements</div>
+                                <div class="barrier-impact">96% of managed care organizations require trial and failure of at least one non-CGRP preventive before approval. 56% require two or more.</div>
+                            </div>
+                            <div class="barrier-source">AJMC MCO analysis (2025)</div>
+                        </div>
+                        <div class="barrier-item">
+                            <div>
+                                <div class="barrier-name">Outdated insurer policies</div>
+                                <div class="barrier-impact">Insurers still require step therapy despite the AHS 2024 position statement recommending CGRPs as first-line treatment.</div>
+                            </div>
+                            <div class="barrier-source">AHS Position Statement (2024)</div>
+                        </div>
+                        <div class="barrier-item">
+                            <div>
+                                <div class="barrier-name">No standardization across plans</div>
+                                <div class="barrier-impact">Every health plan has its own prior authorization criteria — no two are alike.</div>
+                            </div>
+                            <div class="barrier-source">AJMC; Dr. Maria Lopes, MD</div>
+                        </div>
+                        <div class="barrier-item">
+                            <div>
+                                <div class="barrier-name">Documentation errors</div>
+                                <div class="barrier-impact">Incomplete or incorrect PA submissions are a leading cause of denial. Staff frequently skip unanswered questions.</div>
+                            </div>
+                            <div class="barrier-source">Dr. Vera Gibb, AMD (2023)</div>
+                        </div>
+                        <div class="barrier-item">
+                            <div>
+                                <div class="barrier-name">Wrong diagnosis codes</div>
+                                <div class="barrier-impact">Overly specific ICD codes like "ocular migraine" trigger denials when they aren't in payer dropdown menus.</div>
+                            </div>
+                            <div class="barrier-source">Dr. Vera Gibb, AMD (2023)</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stage-panel" id="stage-3">
+                <button class="stage-toggle" onclick="togglePanel('stage-3')">
+                    <div class="stage-number">3</div>
+                    <div class="stage-toggle-text">
+                        <h3>Getting the Prescription Approved</h3>
+                        <p class="stage-subtitle">96% of CGRPs require prior authorization — and denials are common</p>
+                    </div>
+                    <span class="stage-arrow">▾</span>
+                </button>
+                <div class="stage-content">
+                    <div class="stage-content-inner">
+                        <div class="barrier-item">
+                            <div>
+                                <div class="barrier-name">PA required for nearly all CGRPs</div>
+                                <div class="barrier-impact">96% of managed care organizations require prior authorization for CGRP antagonists.</div>
+                            </div>
+                            <div class="barrier-source">AJMC (2025)</div>
+                        </div>
+                        <div class="barrier-item">
+                            <div>
+                                <div class="barrier-name">Processing delays</div>
+                                <div class="barrier-impact">Average 2–5 business days for PA processing; specialty drugs often longer.</div>
+                            </div>
+                            <div class="barrier-source">AMA Prior Auth Survey</div>
+                        </div>
+                        <div class="barrier-item">
+                            <div>
+                                <div class="barrier-name">Denial on first submission</div>
+                                <div class="barrier-impact">Significant initial denial rates, especially for incomplete submissions.</div>
+                            </div>
+                            <div class="barrier-source">AJMC; Dr. Vera Gibb</div>
+                        </div>
+                        <div class="barrier-item">
+                            <div>
+                                <div class="barrier-name">7% of all Rx claims rejected by PA</div>
+                                <div class="barrier-impact">Of those rejections, 37% are abandoned entirely — the prescription is never filled.</div>
+                            </div>
+                            <div class="barrier-source">Medication Access Report (2020)</div>
+                        </div>
+                        <div class="barrier-item">
+                            <div>
+                                <div class="barrier-name">Appeal complexity</div>
+                                <div class="barrier-impact">Multi-step appeal processes cause many providers and patients to give up.</div>
+                            </div>
+                            <div class="barrier-source">American Migraine Foundation</div>
+                        </div>
+                        <div class="barrier-item">
+                            <div>
+                                <div class="barrier-name">Renewal friction</div>
+                                <div class="barrier-impact">PA approvals typically expire every 6–12 months, requiring full re-documentation.</div>
+                            </div>
+                            <div class="barrier-source">FEP Blue PA policies (2024)</div>
+                        </div>
+                        <div class="barrier-item">
+                            <div>
+                                <div class="barrier-name">Specialist-only restrictions</div>
+                                <div class="barrier-impact">Some plans require CGRP prescriptions from headache specialists — and some states don't have any.</div>
+                            </div>
+                            <div class="barrier-source">Shoshana Lipson, AJMC</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stage-panel" id="stage-4">
+                <button class="stage-toggle" onclick="togglePanel('stage-4')">
+                    <div class="stage-number">4</div>
+                    <div class="stage-toggle-text">
+                        <h3>Filling the Prescription</h3>
+                        <p class="stage-subtitle">Cost shock at the pharmacy drives 30–40% abandonment</p>
+                    </div>
+                    <span class="stage-arrow">▾</span>
+                </button>
+                <div class="stage-content">
+                    <div class="stage-content-inner">
+                        <div class="barrier-item">
+                            <div>
+                                <div class="barrier-name">Sticker shock</div>
+                                <div class="barrier-impact">CGRP wholesale cost runs ~$1,200/month ($14,400/year). Without copay assistance, patients face $500–$700+/month out of pocket.</div>
+                            </div>
+                            <div class="barrier-source">AbbVie WAC data (Jan 2026)</div>
+                        </div>
+                        <div class="barrier-item">
+                            <div>
+                                <div class="barrier-name">Cost-driven abandonment</div>
+                                <div class="barrier-impact">Cost sharing above $100 is associated with abandonment rates up to 75% for specialty drugs.</div>
+                            </div>
+                            <div class="barrier-source">JMCP systematic review (2023)</div>
+                        </div>
+                        <div class="barrier-item">
+                            <div>
+                                <div class="barrier-name">Copay assistance unawareness</div>
+                                <div class="barrier-impact">Manufacturer programs can reduce costs to $0–$10/month, but many patients never learn they exist.</div>
+                            </div>
+                            <div class="barrier-source">Assoc. of Migraine Disorders (2025)</div>
+                        </div>
+                        <div class="barrier-item">
+                            <div>
+                                <div class="barrier-name">Medicare/Medicaid exclusion</div>
+                                <div class="barrier-impact">Government-insured patients are ineligible for manufacturer copay assistance programs.</div>
+                            </div>
+                            <div class="barrier-source">Federal law; PAN Foundation</div>
+                        </div>
+                        <div class="barrier-item">
+                            <div>
+                                <div class="barrier-name">Formulary tier placement</div>
+                                <div class="barrier-impact">CGRPs are typically placed on specialty tiers (Tier 4+) with 25–33% coinsurance instead of flat copays.</div>
+                            </div>
+                            <div class="barrier-source">CMS formulary data; DLA Piper (2026)</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stage-panel" id="stage-5">
+                <button class="stage-toggle" onclick="togglePanel('stage-5')">
+                    <div class="stage-number">5</div>
+                    <div class="stage-toggle-text">
+                        <h3>Staying on Treatment</h3>
+                        <p class="stage-subtitle">45% of patients discontinue within 12 months</p>
+                    </div>
+                    <span class="stage-arrow">▾</span>
+                </button>
+                <div class="stage-content">
+                    <div class="stage-content-inner">
+                        <div class="barrier-item">
+                            <div>
+                                <div class="barrier-name">45% discontinue within 12 months</div>
+                                <div class="barrier-impact">Pooled 12-month CGRP monoclonal antibody adherence is ~55%. Oral preventives are even worse at ~14%.</div>
+                            </div>
+                            <div class="barrier-source">Cureus review, 11 studies (2025)</div>
+                        </div>
+                        <div class="barrier-item">
+                            <div>
+                                <div class="barrier-name">PA expiration gaps</div>
+                                <div class="barrier-impact">Lapsed prior authorizations create gaps in medication supply. Many patients never restart.</div>
+                            </div>
+                            <div class="barrier-source">FEP Blue; provider reports</div>
+                        </div>
+                        <div class="barrier-item">
+                            <div>
+                                <div class="barrier-name">Injection aversion</div>
+                                <div class="barrier-impact">Self-injection barriers drive some patients away from monoclonal antibodies, though oral gepants are growing 61% year-over-year.</div>
+                            </div>
+                            <div class="barrier-source">Market data (Qulipta trends)</div>
+                        </div>
+                        <div class="barrier-item">
+                            <div>
+                                <div class="barrier-name">Non-response to first CGRP</div>
+                                <div class="barrier-impact">~25% of patients don't achieve a clinically meaningful response to the first CGRP they try.</div>
+                            </div>
+                            <div class="barrier-source">Burgalassi et al., Cephalalgia (2024)</div>
+                        </div>
+                        <div class="barrier-item">
+                            <div>
+                                <div class="barrier-name">Loss to follow-up</div>
+                                <div class="barrier-impact">Patients doing well cancel appointments. Without a provider visit, PA renewals lapse.</div>
+                            </div>
+                            <div class="barrier-source">Dr. Vera Gibb, AMD</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="sources-section">
+            <div class="sources-inner">
+                <h2>Sources</h2>
+                <p>AJMC · American Headache Society · American Migraine Foundation · AMA · Association of Migraine Disorders · CMS · Cureus · DLA Piper · FEP Blue · Journal of Headache and Pain · JMCP · Kainth et al. (Neurology &amp; Therapy) · Medscape · NeurologyLive · PAN Foundation · Manufacturer earnings reports (Pfizer, AbbVie, Eli Lilly, Amgen). All figures represent best available estimates from published literature and public data. Last updated February 2026.</p>
+            </div>
+        </section>
+
+        <section class="page-cta">
+            <h2>This Is the Problem We're Solving</h2>
+            <p>The Headache Vault automates the prior authorization process so clinicians can focus on patients — not paperwork.</p>
+            <a href="index.html#demo" class="btn btn-white">Try the PA Engine Beta →</a>
+        </section>
+    </main>
+
+    <footer>
+        <p>© 2026 The Headache Vault · <a href="index.html">Home</a></p>
+    </footer>
+
+    <script>
+        function togglePanel(id) {
+            const panel = document.getElementById(id);
+            panel.classList.toggle('open');
+        }
+
+        function openPanel(id) {
+            const panel = document.getElementById(id);
+            if (!panel.classList.contains('open')) {
+                panel.classList.add('open');
+            }
+            panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        // Fade-in on scroll
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, { threshold: 0.15 });
+
+        document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+    </script>
+</body>
+</html>
